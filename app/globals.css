@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: #f8fafc;
+    --foreground: #1e293b;
+
+    --card: #ffffff;
+    --card-foreground: #1e293b;
+
+    --popover: #ffffff;
+    --popover-foreground: #1e293b;
+
+    --primary: #66cfc4;
+    --primary-foreground: #191970;
+
+    --secondary: #f2f4f8;
+    --secondary-foreground: #1e293b;
+
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+
+    --accent: #f2f4f8;
+    --accent-foreground: #1e293b;
+
+    --destructive: #f75454;
+    --destructive-foreground: #ffffff;
+
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    --ring: #66cfc4;
+
+    /* Custom SwiftHR Semantic Brand Tokens */
+    --brand-teal: #66cfc4;
+    --brand-blue: #005eff;
+    --brand-indigo: #191970;
+    --brand-orange: #f39034;
+    --brand-red: #f75454;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: #161616;
+    --foreground: #f2f4f8;
+
+    --card: #272731;
+    --card-foreground: #f2f4f8;
+
+    --popover: #272731;
+    --popover-foreground: #f2f4f8;
+
+    --primary: #66cfc4;
+    --primary-foreground: #161616;
+
+    --secondary: #21272a;
+    --secondary-foreground: #f2f4f8;
+
+    --muted: #21272a;
+    --muted-foreground: #94a3b8;
+
+    --accent: #21272a;
+    --accent-foreground: #f2f4f8;
+
+    --destructive: #f75454;
+    --destructive-foreground: #ffffff;
+
+    --border: #3f3f46;
+    --input: #3f3f46;
+    --ring: #66cfc4;
+
+    /* Dark Mode Brand Token Overrides */
+    --brand-teal: #66cfc4;
+    --brand-blue: #3b82f6;
+    --brand-indigo: #95a4fc;
+    --brand-orange: #f39034;
+    --brand-red: #f75454;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+}
