@@ -1,7 +1,6 @@
 import type { VerificationState, VerifiedDocumentData } from "../types/verification.types";
 
 type Action =
-  | { type: "startScanning" }
   | { type: "tokenRejected"; message: string }
   | { type: "tokenReceived"; token: string }
   | { type: "verificationSucceeded"; result: VerifiedDocumentData }
@@ -19,8 +18,6 @@ const initialState: VerificationState = {
 
 function verificationReducer(state: VerificationState, action: Action): VerificationState {
   switch (action.type) {
-    case "startScanning":
-      return { ...initialState, status: "scanning" };
     case "tokenRejected":
       return { ...state, status: "invalid", errorMessage: action.message };
     case "tokenReceived":

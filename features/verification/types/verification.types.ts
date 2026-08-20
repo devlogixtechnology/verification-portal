@@ -2,7 +2,6 @@
 // Defines the possible states the feature can be in.
 type VerificationStatus =
   | "idle"
-  | "scanning"
   | "verifying"
   | "verified"
   | "invalid"
