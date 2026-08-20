@@ -1,13 +1,5 @@
+type VerificationStatus = "idle" | "verifying" | "verified" | "invalid" | "error";
 
-// Defines the possible states the feature can be in.
-type VerificationStatus =
-  | "idle"
-  | "verifying"
-  | "verified"
-  | "invalid"
-  | "error";
-
-// The object that will hold all state information of the feature
 type VerificationState<TAsset = unknown, TErrorDetail = unknown> = {
   status: VerificationStatus;
   token: string | null;
@@ -16,4 +8,30 @@ type VerificationState<TAsset = unknown, TErrorDetail = unknown> = {
   errorDetail: TErrorDetail | null;
 };
 
-export type { VerificationStatus, VerificationState };
+type RequestOptions = {
+  path: string;
+  method?: "GET" | "POST";
+  headers?: Record<string, string>;
+  body?: unknown;
+};
+
+type ParsedVerificationResult<TAsset, TErrorDetail> =
+  | { outcome: "verified"; result: TAsset }
+  | { outcome: "rejected"; message: string; detail?: TErrorDetail }
+  | { outcome: "failed"; message: string };
+
+type VerificationConfig<TAsset = unknown, TErrorDetail = unknown> = {
+  apiBaseUrl: string;
+  isValidTokenFormat?: (token: string) => boolean;
+  parseToken?: (raw: string) => string | null;
+  buildVerificationRequest?: (token: string) => RequestOptions;
+  isHealthyResponse?: (response: Response) => boolean;
+  parseVerificationResponse: (rawBody: unknown) => ParsedVerificationResult<TAsset, TErrorDetail>;
+  renderVerified: (document: TAsset) => import("react").ReactNode;
+  renderInvalid?: (message: string, detail?: TErrorDetail) => import("react").ReactNode;
+};
+
+export type {
+  VerificationStatus, VerificationState, RequestOptions,
+  ParsedVerificationResult, VerificationConfig,
+};
