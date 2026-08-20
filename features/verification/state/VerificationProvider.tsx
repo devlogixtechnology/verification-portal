@@ -10,24 +10,37 @@ import {
 import { verificationReducer, createInitialState, type Action } from "./verificationMachine";
 import type { VerificationConfig, VerificationState } from "../types/verification.types";
 
+/** What `useVerification` returns. */
 type VerificationContextValue<TAsset, TErrorDetail> = {
   state: VerificationState<TAsset, TErrorDetail>;
   dispatch: Dispatch<Action<TAsset, TErrorDetail>>;
   config: VerificationConfig<TAsset, TErrorDetail>;
 };
 
-// React context cannot itself be generic; consumers re-apply their own type
-// arguments through useVerification.
+// Context cannot carry type parameters of its own; `useVerification` reapplies
+// the caller's.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const VerificationContext = createContext<VerificationContextValue<any, any> | undefined>(undefined);
 
 type VerificationProviderProps<TAsset, TErrorDetail> = {
-  /** The one place a project describes its backend. Also what lets TypeScript
-   *  infer TAsset and TErrorDetail for everything below this provider. */
+  /** The project's backend and rendering adapter. */
   config: VerificationConfig<TAsset, TErrorDetail>;
   children: ReactNode;
 };
 
+/**
+ * Owns the verification state and shares it, along with the config, with every
+ * screen below it. Wrap the verification routes in one of these.
+ *
+ * `TAsset` and `TErrorDetail` are inferred from `config`, so screens below get
+ * a fully typed `state.result` without naming them again.
+ *
+ * ```tsx
+ * <VerificationProvider config={verificationConfig}>
+ *   {children}
+ * </VerificationProvider>
+ * ```
+ */
 function VerificationProvider<TAsset, TErrorDetail>({
   config,
   children,

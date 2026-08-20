@@ -4,24 +4,36 @@ import { useCallback, useEffect, useRef } from "react";
 import { verifyToken } from "../api/verification";
 import { useVerification } from "../state/useVerification";
 
+/** Shown when input fails `parseToken` or `isValidTokenFormat`. */
 const DEFAULT_INVALID_TOKEN_MESSAGE =
   "That doesn't look like a valid code. Please check it and try again.";
 
 /**
- * The only place a token travels from the UI into the state machine:
- * parse -> format check -> request -> dispatch. Screens never own loading or
- * error booleans; they read status off the machine.
+ * Runs a token through the whole verification flow: parse the raw input, check
+ * its format, send the request, and move the state machine to the outcome.
  *
- * Config comes from VerificationProvider, so the returned callbacks keep a
- * stable identity across renders — safe to put in a useEffect dependency array
- * on the deep-link route without re-firing verification every render.
+ * Screens call these actions and read the result with `useVerification`; the
+ * returned functions are stable, so they are safe to list as effect
+ * dependencies.
+ *
+ * ```tsx
+ * const { submitToken, retry, reset } = useSubmitToken<Certificate, RejectionDetail>();
+ *
+ * // Deep link: verify as soon as the page opens.
+ * useEffect(() => { void submitToken(token); }, [submitToken, token]);
+ * ```
+ *
+ * @returns
+ * - `submitToken(rawInput)` - verify a scanned payload or pasted code.
+ * - `retry()` - verify the same token again. Does nothing if there is none.
+ * - `reset()` - return to `idle` and discard any result.
  */
 function useSubmitToken<TAsset, TErrorDetail>() {
   const { state, dispatch, config } = useVerification<TAsset, TErrorDetail>();
 
-  // Guards against an earlier, slower response overwriting a newer one.
+  // Ignores a slow response that arrives after a newer request was started.
   const latestRequestId = useRef(0);
-  // Read the freshest config without making it a callback dependency.
+  // Keeps the callbacks stable while still reading the current config.
   const configRef = useRef(config);
   useEffect(() => {
     configRef.current = config;
@@ -57,7 +69,7 @@ function useSubmitToken<TAsset, TErrorDetail>() {
       const token = parseToken ? parseToken(rawToken) : rawToken;
 
       if (!token || (isValidTokenFormat && !isValidTokenFormat(token))) {
-        latestRequestId.current++; // discard anything still in flight
+        latestRequestId.current++;
         dispatch({ type: "tokenRejected", message: DEFAULT_INVALID_TOKEN_MESSAGE });
         return;
       }

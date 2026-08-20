@@ -11,18 +11,30 @@ import type {
   VerificationConfig,
 } from "../types/verification.types";
 
+/** Used when `config.buildVerificationRequest` is omitted. */
 function defaultBuildVerificationRequest(token: string): RequestOptions {
   return { path: `/verify/${encodeURIComponent(token)}`, method: "GET" };
 }
 
+/** Used when `config.isHealthyResponse` is omitted. */
 function defaultIsHealthyResponse(response: Response): boolean {
   return response.ok;
 }
 
 /**
- * Single entry point for verifying a token. Every backend-specific decision —
- * the URL shape, what counts as healthy, how a body maps to verified/rejected —
- * is supplied by the consuming project through `config`.
+ * Verifies a token and reports what happened. Never throws.
+ *
+ * The pipeline is: build the request from the config, send it, classify
+ * transport failures, then hand the body to `config.parseVerificationResponse`
+ * for the domain decision.
+ *
+ * Contains no React, so it can also be called from a server component, a route
+ * handler, or a test.
+ *
+ * ```ts
+ * const outcome = await verifyToken("a1b2c3", verificationConfig);
+ * if (outcome.outcome === "verified") console.log(outcome.result);
+ * ```
  */
 async function verifyToken<TAsset, TErrorDetail>(
   token: string,

@@ -1,14 +1,12 @@
 import type { ParsedVerificationResult } from "../types/verification.types";
 
-/**
- * A transport-level failure, expressed in the same vocabulary the state machine
- * consumes — no parallel `{ type: "failed" }` shape to keep in sync.
- */
+/** A failure the module can describe without help from the consuming project. */
 type ClassifiedError = Extract<
   ParsedVerificationResult<never, never>,
   { outcome: "failed" }
 >;
 
+/** Default copy shown when a request could not be completed. */
 const FAILURE_MESSAGES = {
   timeout: "The request timed out. Please try again.",
   server: "Something went wrong on our end. Please try again.",
@@ -16,17 +14,18 @@ const FAILURE_MESSAGES = {
   unreadable: "Something went wrong. Please try again.",
 } as const;
 
+/** Builds a `failed` outcome. */
 function failure(message: string): ClassifiedError {
   return { outcome: "failed", message };
 }
 
 /**
- * Classifies a response the caller could not treat as healthy.
+ * Classifies a response by status code.
  *
- * Returns `null` when the response should still be handed to the config's
- * `parseVerificationResponse` — a 4xx normally carries a domain body ("expired",
- * "tampered") that only the consuming project can turn into a `rejected` result.
- * Only environmental failures are classified here.
+ * Returns a failure for timeouts and server faults. Returns `null` for healthy
+ * responses and for 4xx, which are passed to `parseVerificationResponse`
+ * instead: only the consuming project knows whether a 404 means "expired",
+ * "tampered", or something else.
  */
 function classifyResponse(
   response: Response,
@@ -43,6 +42,7 @@ function classifyResponse(
   return null;
 }
 
+/** Classifies a thrown request error, separating an aborted timeout from a lost connection. */
 function classifyNetworkError(error: unknown): ClassifiedError {
   const isAbort =
     error instanceof Error && error.name === "AbortError";

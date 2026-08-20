@@ -1,5 +1,18 @@
 import type { VerificationState } from "../types/verification.types";
 
+/**
+ * Everything that can move a verification forward.
+ *
+ * | Action                  | Resulting status |
+ * | ----------------------- | ---------------- |
+ * | `tokenRejected`         | `invalid`        |
+ * | `tokenReceived`         | `verifying`      |
+ * | `verificationSucceeded` | `verified`       |
+ * | `verificationRejected`  | `invalid`        |
+ * | `verificationFailed`    | `error`          |
+ * | `retry`                 | `verifying`      |
+ * | `reset`                 | `idle`           |
+ */
 type Action<TAsset, TErrorDetail> =
   | { type: "tokenRejected"; message: string }
   | { type: "tokenReceived"; token: string }
@@ -9,24 +22,26 @@ type Action<TAsset, TErrorDetail> =
   | { type: "retry" }
   | { type: "reset" };
 
+/** The state a verification starts in: idle, with nothing to show. */
 function createInitialState<TAsset, TErrorDetail>(): VerificationState<TAsset, TErrorDetail> {
   return { status: "idle", token: null, result: null, errorMessage: null, errorDetail: null };
 }
 
 /**
- * Every transition returns the complete state shape instead of spreading the
- * previous one. Spreading is how stale fields survive a transition — a previous
- * errorMessage rendered next to a spinner, or an old result still readable after
- * a failure. Stating all five fields also means the annotated return type forces
- * a deliberate decision in every case if VerificationState ever gains a field.
+ * The verification state machine. Pure and free of React, so it can be tested
+ * on its own.
+ *
+ * Each transition returns the whole state, so no field outlives the status it
+ * belongs to: an error message never survives into a loading screen, and a
+ * result never survives into a failure.
  */
 function verificationReducer<TAsset, TErrorDetail>(
   state: VerificationState<TAsset, TErrorDetail>,
   action: Action<TAsset, TErrorDetail>
 ): VerificationState<TAsset, TErrorDetail> {
   switch (action.type) {
-    // The raw input never became a token, so none is retained. Keeping the
-    // previous one would let `retry` silently re-verify whatever came before.
+    // Input that never became a token, so no token is kept and `retry` has
+    // nothing to repeat.
     case "tokenRejected":
       return {
         status: "invalid",
@@ -54,8 +69,7 @@ function verificationReducer<TAsset, TErrorDetail>(
         errorDetail: null,
       };
 
-    // The token is kept so the UI can still offer a retry on an expired or
-    // tampered code; the previously verified result is not.
+    // The token is kept so the screen can still offer a retry.
     case "verificationRejected":
       return {
         status: "invalid",
@@ -74,8 +88,7 @@ function verificationReducer<TAsset, TErrorDetail>(
         errorDetail: null,
       };
 
-    // Retrying with no token would leave the machine in `verifying` with
-    // nothing in flight, so it is a no-op.
+    // Verifies the same token again. Without one, there is nothing to retry.
     case "retry":
       if (!state.token) return state;
       return {

@@ -1,13 +1,15 @@
 import type { RequestOptions, VerificationConfig } from "../types/verification.types";
 
+/** How long a single attempt may take before it is aborted. */
 const DEFAULT_TIMEOUT_MS = 10000;
 
-/**
- * The transport only ever needs the base URL — it stays independent of the
- * rendering/parsing halves of VerificationConfig.
- */
+/** The only part of the config the transport reads. */
 type TransportConfig = Pick<VerificationConfig, "apiBaseUrl">;
 
+/**
+ * Sends one request and returns the raw response. Status codes are not
+ * inspected here; that is the caller's job.
+ */
 async function performRequest(
   options: RequestOptions,
   config: TransportConfig
@@ -35,8 +37,10 @@ async function performRequest(
 }
 
 /**
- * Retries once, but only for idempotent requests — replaying a POST after an
- * ambiguous failure risks a duplicate write on the backend.
+ * Sends a request, retrying once if it never reached the server.
+ *
+ * Only `GET` is retried; replaying a `POST` after an ambiguous failure could
+ * duplicate a write. Anything else rethrows the original error.
  */
 async function requestWithRetry(
   options: RequestOptions,
