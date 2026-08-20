@@ -7,26 +7,13 @@ type VerificationStatus =
   | "invalid"
   | "error";
 
-// Defines the data needed in response to a successful verification. Handles any kind of verification information
-type VerifiedDocumentData = {
-  
-  // The mandatory information to be returned by ANY project implementing this feature
-  assetType: string;
-  issuer: string;
-  issuedDate: string;
-  status: "valid" | "revoked";
-
-  // The optional information about the verified asset. 
-  // Highlighting will let the corresponsing detail be rendered in the main dashboard.
-  details: { label: string; value: string; highlight?: boolean }[];
-};
-
 // The object that will hold all state information of the feature
-type VerificationState = {
+type VerificationState<TAsset = unknown, TErrorDetail = unknown> = {
   status: VerificationStatus;
   token: string | null;
-  result: VerifiedDocumentData | null;
+  result: TAsset | null;
   errorMessage: string | null;
+  errorDetail: TErrorDetail | null;
 };
 
-export type { VerificationStatus, VerifiedDocumentData, VerificationState };
+export type { VerificationStatus, VerificationState };
