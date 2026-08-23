@@ -1,4 +1,4 @@
-import type { VerifiedDocument } from "@/store/verification/types";
+import type { VerifiedDocument } from "@/features/verification/types/verification.types";
 
 type AssetDetailsProps = {
   document: VerifiedDocument;
@@ -15,15 +15,23 @@ function formatDate(date: string) {
 export default function AssetDetails({
   document,
 }: AssetDetailsProps) {
+  // Cast to the specific shape this UI component expects for the mock
+  const doc = document as {
+    documentType?: string;
+    title?: string;
+    referenceNumber?: string;
+    issuanceDate?: string;
+  };
+
   return (
     <section>
       <div className="mb-6">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--brand-blue)]">
-          {document.documentType}
+          {doc.documentType}
         </p>
 
         <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--foreground)] sm:text-3xl">
-          {document.title}
+          {doc.title}
         </h2>
       </div>
 
@@ -34,7 +42,7 @@ export default function AssetDetails({
           </p>
 
           <p className="mt-1 text-sm font-medium text-[var(--foreground)]">
-            {document.referenceNumber}
+            {doc.referenceNumber}
           </p>
         </div>
 
@@ -44,7 +52,7 @@ export default function AssetDetails({
           </p>
 
           <p className="mt-1 text-sm font-medium text-[var(--foreground)]">
-            {formatDate(document.issuanceDate)}
+            {doc.issuanceDate ? formatDate(doc.issuanceDate) : null}
           </p>
         </div>
       </div>

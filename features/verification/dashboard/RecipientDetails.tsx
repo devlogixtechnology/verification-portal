@@ -1,4 +1,4 @@
-import type { VerificationRecipient } from "@/store/verification/types";
+import type { VerificationRecipient } from "@/features/verification/types/verification.types";
 
 type RecipientDetailsProps = {
   recipient: VerificationRecipient;

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { VerificationState } from "@/store/verification/types";
+import type { VerificationState } from "@/features/verification/types/verification.types";
 
 import VerificationHeader from "./VerificationHeader";
 import VerificationStatus from "./VerificationStatus";
@@ -16,10 +16,8 @@ export default function VerificationDashboard({
   children,
 }: VerificationDashboardProps) {
   const showResult =
-    state.status === "valid" ||
+    state.status === "verified" ||
     state.status === "invalid" ||
-    state.status === "expired" ||
-    state.status === "revoked" ||
     state.status === "error";
 
   return (
@@ -31,7 +29,7 @@ export default function VerificationDashboard({
           <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
             <VerificationStatus state={state} />
 
-            {state.status === "valid" && children && (
+            {state.status === "verified" && children && (
               <section className="space-y-6 p-5 sm:p-8">
                 {children}
               </section>

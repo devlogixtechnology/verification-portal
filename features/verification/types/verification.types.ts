@@ -80,7 +80,28 @@ type VerificationConfig<TAsset = unknown, TErrorDetail = unknown> = {
   renderInvalid?: (message: string, detail?: TErrorDetail) => import("react").ReactNode;
 };
 
+type VerificationIssuer = {
+  name: string;
+  designation?: string;
+  logoUrl?: string;
+};
+
+type VerificationRecipient = {
+  name: string;
+  email?: string;
+};
+
+type VerifiedDocument = {
+  documentType?: string;
+  title?: string;
+  referenceNumber?: string;
+  issuanceDate?: string;
+  issuer?: VerificationIssuer;
+  recipient?: VerificationRecipient;
+};
+
 export type {
   VerificationStatus, VerificationState, RequestOptions,
   ParsedVerificationResult, VerificationConfig,
+  VerificationIssuer, VerificationRecipient, VerifiedDocument,
 };

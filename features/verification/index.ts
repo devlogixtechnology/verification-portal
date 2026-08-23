@@ -21,6 +21,9 @@ export type {
   VerificationStatus,
   ParsedVerificationResult,
   RequestOptions,
+  VerificationIssuer,
+  VerificationRecipient,
+  VerifiedDocument,
 } from "./types/verification.types";
 
 export type {

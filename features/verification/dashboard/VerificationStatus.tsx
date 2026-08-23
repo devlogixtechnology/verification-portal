@@ -1,11 +1,11 @@
-import type { VerificationState } from "@/store/verification/types";
+import type { VerificationState } from "@/features/verification/types/verification.types";
 
 type VerificationStatusProps = {
   state: VerificationState;
 };
 
 const statusConfig = {
-  valid: {
+  verified: {
     label: "Verified",
     title: "Document Verified",
     description:
@@ -18,22 +18,6 @@ const statusConfig = {
     title: "Verification Failed",
     description:
       "The provided verification code could not be matched to a valid asset.",
-    icon: "!",
-  },
-
-  expired: {
-    label: "Expired",
-    title: "Verification Expired",
-    description:
-      "This verification code or asset is no longer valid.",
-    icon: "!",
-  },
-
-  revoked: {
-    label: "Revoked",
-    title: "Verification Revoked",
-    description:
-      "This asset has been revoked by its issuing authority.",
     icon: "!",
   },
 
@@ -51,18 +35,14 @@ export default function VerificationStatus({
 }: VerificationStatusProps) {
   if (
     state.status === "idle" ||
-    state.status === "scanning" ||
     state.status === "verifying"
   ) {
     return null;
   }
 
-  const content =
-    state.status === "error"
-      ? statusConfig.error
-      : statusConfig[state.status];
+  const content = statusConfig[state.status];
 
-  const verified = state.status === "valid";
+  const verified = state.status === "verified";
 
   return (
     <section

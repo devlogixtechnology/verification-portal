@@ -2,48 +2,54 @@
 
 import { useState } from "react";
 
-import type { VerificationState } from "@/store/verification/types";
+import type { VerificationState } from "@/features/verification/types/verification.types";
 
 import VerificationDashboard from "./dashboard/VerificationDashboard";
 import VerificationStart from "./scanner/VerificationStart";
 import VerificationScanner from "./scanner/VerificationScanner";
 
 export default function VerificationFlow() {
-  const [state, setState] =
-    useState<VerificationState>({
-      status: "idle",
-    });
+  const [isScanning, setIsScanning] = useState(false);
+  const [state, setState] = useState<VerificationState>({
+    status: "idle",
+    token: null,
+    result: null,
+    errorMessage: null,
+    errorDetail: null,
+  });
 
   const handleStart = () => {
-    setState({
-      status: "scanning",
-    });
+    setIsScanning(true);
   };
 
   const handleScan = (token: string) => {
     console.log("Scanned verification token:", token);
+    setIsScanning(false);
 
     setState({
       status: "verifying",
+      token,
+      result: null,
+      errorMessage: null,
+      errorDetail: null,
     });
 
     // Temporary simulation.
-    // This will eventually be replaced by the RTK Query
-    // verification request.
+    // This will eventually be replaced by the verification request.
     setTimeout(() => {
       setState({
-        status: "valid",
+        status: "verified",
+        token,
         result: {
-          verificationStatus: "valid",
-          data: {
-            asset: {
-              token,
-              documentType: "Certificate",
-              title: "Certificate of Completion",
-            },
-            verifiedAt: new Date().toISOString(),
+          asset: {
+            token,
+            documentType: "Certificate",
+            title: "Certificate of Completion",
           },
+          verifiedAt: new Date().toISOString(),
         },
+        errorMessage: null,
+        errorDetail: null,
       });
     }, 1000);
   };
@@ -53,18 +59,18 @@ export default function VerificationFlow() {
   };
 
   if (state.status === "idle") {
+    if (isScanning) {
+      return (
+        <VerificationScanner
+          onScan={handleScan}
+          onInvalidScan={handleInvalidScan}
+        />
+      );
+    }
+
     return (
       <VerificationStart
         onStart={handleStart}
-      />
-    );
-  }
-
-  if (state.status === "scanning") {
-    return (
-      <VerificationScanner
-        onScan={handleScan}
-        onInvalidScan={handleInvalidScan}
       />
     );
   }
@@ -87,13 +93,12 @@ export default function VerificationFlow() {
 
   return (
     <VerificationDashboard state={state}>
-      {state.status === "valid" && (
+      {state.status === "verified" && (
         <div>
           <h2 className="text-lg font-semibold text-[var(--foreground)]">
             {String(
-              (state.result.data.asset as {
-                title?: string;
-              }).title ?? "Verified Asset"
+              (state.result as { asset?: { title?: string } })?.asset?.title ??
+                "Verified Asset"
             )}
           </h2>
 

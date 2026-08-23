@@ -1,4 +1,5 @@
-import type { VerificationIssuer } from "@/store/verification/types";
+import type { VerificationIssuer } from "@/features/verification/types/verification.types";
+import Image from "next/image";
 
 type IssuerDetailsProps = {
   issuer: VerificationIssuer;
@@ -15,7 +16,7 @@ export default function IssuerDetails({
 
       <div className="mt-4 flex items-center gap-4">
         {issuer.logoUrl ? (
-          <img
+          <Image
             src={issuer.logoUrl}
             alt={`${issuer.name} logo`}
             className="h-12 w-12 rounded-lg object-contain"
