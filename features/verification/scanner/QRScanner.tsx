@@ -97,7 +97,7 @@ export default function QRScanner({
     return (
       <div>
         <p style={{ marginBottom: "1rem" }}>
-          Camera access isn't available. You can enter your verification code manually instead:
+          Camera access isn&apos;t available. You can enter your verification code manually instead:
         </p>
         <input
           type="text"
