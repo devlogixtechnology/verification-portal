@@ -10,7 +10,6 @@ export default function Error({
       <p className="text-sm text-[var(--muted-foreground)]">
         Something went wrong while loading verification.
       </p>
-
       <button
         onClick={reset}
         className="rounded-lg bg-[var(--brand-teal)] px-4 py-2 text-sm font-medium text-[var(--brand-indigo)]"
