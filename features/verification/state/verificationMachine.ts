@@ -1,48 +1,61 @@
-import type { VerificationState } from "../types/verification.types";
+import type {
+  VerificationErrorDetail,
+  VerificationState,
+} from "../types/verification.types";
 
 /**
- * Everything that can move a verification forward.
- *
- * | Action                  | Resulting status |
- * | ----------------------- | ---------------- |
- * | `tokenRejected`         | `invalid`        |
- * | `tokenReceived`         | `verifying`      |
- * | `verificationSucceeded` | `verified`       |
- * | `verificationRejected`  | `invalid`        |
- * | `verificationFailed`    | `error`          |
- * | `retry`                 | `verifying`      |
- * | `reset`                 | `idle`           |
+ * Discriminated union of all possible actions in the verification finite state machine.
  */
-type Action<TAsset, TErrorDetail> =
-  | { type: "tokenRejected"; message: string }
-  | { type: "tokenReceived"; token: string }
-  | { type: "verificationSucceeded"; result: TAsset }
-  | { type: "verificationRejected"; message: string; detail?: TErrorDetail }
-  | { type: "verificationFailed"; message: string }
-  | { type: "retry" }
-  | { type: "reset" };
+export type VerificationAction<
+  TAsset = unknown,
+  TErrorDetail = VerificationErrorDetail
+> =
+  | { type: "tokenRejected" | "TOKEN_REJECTED"; message: string }
+  | { type: "tokenReceived" | "TOKEN_RECEIVED"; token: string }
+  | { type: "verificationSucceeded" | "VERIFICATION_SUCCEEDED"; result: TAsset }
+  | {
+      type: "verificationRejected" | "VERIFICATION_REJECTED";
+      message: string;
+      detail?: TErrorDetail;
+    }
+  | { type: "verificationFailed" | "VERIFICATION_FAILED"; message: string }
+  | { type: "retry" | "RETRY" }
+  | { type: "reset" | "RESET" };
 
-/** The state a verification starts in: idle, with nothing to show. */
-function createInitialState<TAsset, TErrorDetail>(): VerificationState<TAsset, TErrorDetail> {
-  return { status: "idle", token: null, result: null, errorMessage: null, errorDetail: null };
+/**
+ * Creates a clean, initial "idle" state.
+ */
+export function createInitialState<
+  TAsset = unknown,
+  TErrorDetail = VerificationErrorDetail
+>(): VerificationState<TAsset, TErrorDetail> {
+  return {
+    status: "idle",
+    token: null,
+    result: null,
+    errorMessage: null,
+    errorDetail: null,
+  };
 }
 
 /**
- * The verification state machine. Pure and free of React, so it can be tested
- * on its own.
+ * Pure verification state machine reducer.
  *
- * Each transition returns the whole state, so no field outlives the status it
- * belongs to: an error message never survives into a loading screen, and a
- * result never survives into a failure.
+ * Enforces state invariants:
+ * - Each transition returns a deterministic, complete state snapshot.
+ * - Outdated error messages and results are purged on new attempts to prevent stale UI flashes.
+ * - Retains the token during failures so the UI can offer a seamless retry action.
  */
-function verificationReducer<TAsset, TErrorDetail>(
+export function verificationReducer<
+  TAsset = unknown,
+  TErrorDetail = VerificationErrorDetail
+>(
   state: VerificationState<TAsset, TErrorDetail>,
-  action: Action<TAsset, TErrorDetail>
+  action: VerificationAction<TAsset, TErrorDetail>
 ): VerificationState<TAsset, TErrorDetail> {
   switch (action.type) {
-    // Input that never became a token, so no token is kept and `retry` has
-    // nothing to repeat.
     case "tokenRejected":
+    case "TOKEN_REJECTED":
       return {
         status: "invalid",
         token: null,
@@ -52,6 +65,7 @@ function verificationReducer<TAsset, TErrorDetail>(
       };
 
     case "tokenReceived":
+    case "TOKEN_RECEIVED":
       return {
         status: "verifying",
         token: action.token,
@@ -61,6 +75,7 @@ function verificationReducer<TAsset, TErrorDetail>(
       };
 
     case "verificationSucceeded":
+    case "VERIFICATION_SUCCEEDED":
       return {
         status: "verified",
         token: state.token,
@@ -69,8 +84,8 @@ function verificationReducer<TAsset, TErrorDetail>(
         errorDetail: null,
       };
 
-    // The token is kept so the screen can still offer a retry.
     case "verificationRejected":
+    case "VERIFICATION_REJECTED":
       return {
         status: "invalid",
         token: state.token,
@@ -80,6 +95,7 @@ function verificationReducer<TAsset, TErrorDetail>(
       };
 
     case "verificationFailed":
+    case "VERIFICATION_FAILED":
       return {
         status: "error",
         token: state.token,
@@ -88,8 +104,8 @@ function verificationReducer<TAsset, TErrorDetail>(
         errorDetail: null,
       };
 
-    // Verifies the same token again. Without one, there is nothing to retry.
     case "retry":
+    case "RETRY":
       if (!state.token) return state;
       return {
         status: "verifying",
@@ -100,12 +116,10 @@ function verificationReducer<TAsset, TErrorDetail>(
       };
 
     case "reset":
+    case "RESET":
       return createInitialState<TAsset, TErrorDetail>();
 
     default:
       return state;
   }
 }
-
-export { verificationReducer, createInitialState };
-export type { Action };

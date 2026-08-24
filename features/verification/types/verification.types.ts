@@ -1,107 +1,128 @@
-/** The five states a verification can be in. */
-type VerificationStatus = "idle" | "verifying" | "verified" | "invalid" | "error";
+/**
+ * The 5 core states of the verification state machine.
+ */
+export type VerificationStatus =
+  | "idle"
+  | "verifying"
+  | "verified"
+  | "invalid"
+  | "error";
 
 /**
- * The complete state of a verification.
- *
- * @typeParam TAsset - Shape of a verified asset, defined by the consuming project.
- * @typeParam TErrorDetail - Shape of the structured detail attached to a rejection.
+ * Structured details regarding an authority issuing the document.
  */
-type VerificationState<TAsset = unknown, TErrorDetail = unknown> = {
-  /** Drives which screen is shown. */
+export interface VerificationIssuer {
+  name: string;
+  designation?: string;
+  logoUrl?: string;
+  verifiedBadge?: boolean;
+  website?: string;
+}
+
+/**
+ * Subject or holder of the verified document.
+ */
+export interface VerificationRecipient {
+  name: string;
+  email?: string;
+  identifier?: string;
+}
+
+/**
+ * Standard verified document entity payload.
+ */
+export interface VerifiedDocument {
+  id?: string;
+  documentType: string;
+  title: string;
+  referenceNumber: string;
+  issuanceDate: string;
+  expirationDate?: string;
+  status?: "active" | "revoked" | "expired";
+  issuer?: VerificationIssuer;
+  recipient?: VerificationRecipient;
+  additionalData?: Record<string, string | number | boolean>;
+  verifiedAt?: string;
+  blockchainTxHash?: string;
+}
+
+/**
+ * Structured rejection details returned on 4xx/invalid response.
+ */
+export interface VerificationErrorDetail {
+  reason?: "not_found" | "expired" | "revoked" | "tampered" | "format_error" | "unknown";
+  code?: string;
+  details?: string;
+}
+
+/**
+ * Complete immutable verification state snapshot.
+ *
+ * @typeParam TAsset - Shape of a verified asset (defaults to VerifiedDocument).
+ * @typeParam TErrorDetail - Shape of structured rejection details.
+ */
+export interface VerificationState<
+  TAsset = VerifiedDocument,
+  TErrorDetail = VerificationErrorDetail
+> {
+  /** Current state status driving the view */
   status: VerificationStatus;
-  /** The token currently being verified, or the one that was. */
+  /** Token currently under verification */
   token: string | null;
-  /** Populated only while `status` is `"verified"`. */
+  /** Populated only when status is 'verified' */
   result: TAsset | null;
-  /** Message to display while `status` is `"invalid"` or `"error"`. */
+  /** Error or rejection message displayed to the user */
   errorMessage: string | null;
-  /** Structured rejection data, when the backend supplied any. */
+  /** Structured rejection data supplied by the backend */
   errorDetail: TErrorDetail | null;
-};
-
-/** A single HTTP request, described independently of how it is sent. */
-type RequestOptions = {
-  /** Appended to `apiBaseUrl`. Include the leading slash. */
-  path: string;
-  /** Defaults to `"GET"`. */
-  method?: "GET" | "POST";
-  /** Merged over the defaults. `Content-Type: application/json` is set automatically when a body is present. */
-  headers?: Record<string, string>;
-  /** Serialised as JSON. Omit for requests without a body. */
-  body?: unknown;
-};
+}
 
 /**
- * What a response means, as decided by the consuming project.
- *
- * - `verified` - the asset is genuine.
- * - `rejected` - the backend answered, and the answer is no (expired, tampered, unknown).
- * - `failed` - the answer could not be obtained (network, timeout, server fault).
+ * A single HTTP request abstraction.
  */
-type ParsedVerificationResult<TAsset, TErrorDetail> =
+export interface RequestOptions {
+  path: string;
+  method?: "GET" | "POST";
+  headers?: Record<string, string>;
+  body?: unknown;
+}
+
+/**
+ * Parsed verification response outcome.
+ */
+export type ParsedVerificationResult<TAsset = VerifiedDocument, TErrorDetail = VerificationErrorDetail> =
   | { outcome: "verified"; result: TAsset }
   | { outcome: "rejected"; message: string; detail?: TErrorDetail }
   | { outcome: "failed"; message: string };
 
 /**
- * Everything a project must supply to adapt this feature to its own backend
- * and visual language. Optional fields fall back to the defaults noted below.
+ * Configuration contract for adapting verification to any backend & rendering system.
  */
-type VerificationConfig<TAsset = unknown, TErrorDetail = unknown> = {
-  /** Origin and any path prefix, without a trailing slash. */
+export interface VerificationConfig<
+  TAsset = VerifiedDocument,
+  TErrorDetail = VerificationErrorDetail
+> {
+  /** API origin and base path prefix without trailing slash */
   apiBaseUrl: string;
 
-  /** Rejects a token before any request is made. Default: every non-empty token is accepted. */
+  /** Validates token format before dispatching network request */
   isValidTokenFormat?: (token: string) => boolean;
 
-  /**
-   * Extracts a token from raw input, such as a scanned QR payload or a pasted
-   * URL. Return `null` if no token can be found. Default: the input is the token.
-   */
+  /** Extracts token from raw scan payload or URL */
   parseToken?: (raw: string) => string | null;
 
-  /** Describes the verification request. Default: `GET {apiBaseUrl}/verify/{token}`. */
+  /** Builds the HTTP request payload */
   buildVerificationRequest?: (token: string) => RequestOptions;
 
-  /** Decides whether a response carries a usable body. Default: `response.ok`. */
+  /** Health check on response object */
   isHealthyResponse?: (response: Response) => boolean;
 
-  /**
-   * Turns a response body into an outcome. Called for healthy responses and for
-   * 4xx responses, which usually carry the reason a token was rejected.
-   */
+  /** Response parser converting HTTP responses into domain outcomes */
   parseVerificationResponse: (rawBody: unknown) => ParsedVerificationResult<TAsset, TErrorDetail>;
 
-  /** Renders the verified asset. Style it with the shared CSS tokens - see README. */
-  renderVerified: (document: TAsset) => import("react").ReactNode;
+  /** Optional custom renderer for verified asset */
+  renderVerified?: (document: TAsset) => React.ReactNode;
 
-  /** Renders a rejection. When omitted, `errorMessage` is shown on its own. */
-  renderInvalid?: (message: string, detail?: TErrorDetail) => import("react").ReactNode;
-};
-
-type VerificationIssuer = {
-  name: string;
-  designation?: string;
-  logoUrl?: string;
-};
-
-type VerificationRecipient = {
-  name: string;
-  email?: string;
-};
-
-type VerifiedDocument = {
-  documentType?: string;
-  title?: string;
-  referenceNumber?: string;
-  issuanceDate?: string;
-  issuer?: VerificationIssuer;
-  recipient?: VerificationRecipient;
-};
-
-export type {
-  VerificationStatus, VerificationState, RequestOptions,
-  ParsedVerificationResult, VerificationConfig,
-  VerificationIssuer, VerificationRecipient, VerifiedDocument,
-};
+  /** Optional custom renderer for rejection */
+  renderInvalid?: (message: string, detail?: TErrorDetail) => React.ReactNode;
+}

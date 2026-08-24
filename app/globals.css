@@ -1,89 +1,131 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    --background: #f8fafc;
-    --foreground: #1e293b;
+:root {
+  /* Brand */
+  --brand-teal: #0acab7;
+  --brand-teal-hover: #09b6a5; /* ~8% darker, for hover/active states */
+  --brand-indigo: #1a1a2e; /* dark text-on-teal — adjust once confirmed against Figma */
 
-    --card: #ffffff;
-    --card-foreground: #1e293b;
+  /* Semantic status */
+  --status-valid: #0acab7;
+  --status-danger: #d63636;
+  --status-danger-bg: #fdecec; /* light tint for error surfaces/badges */
 
-    --popover: #ffffff;
-    --popover-foreground: #1e293b;
+  /* Neutrals */
+  --background: #f8f8f8;
+  --card: #ffffff;
+  --foreground: #222222;
+  --muted-foreground: #6b6b6b; /* derived — confirm against Figma if a mid-gray text token exists */
+  --border: #b1b1b1;
+  --border-subtle: #e2e2e2; /* lighter divider variant, e.g. card hairlines */
 
-    --primary: #66cfc4;
-    --primary-foreground: #191970;
+  /* Nav / chrome */
+  --nav-icon: #000000;
+  --nav-bg: var(--brand-teal);
 
-    --secondary: #f2f4f8;
-    --secondary-foreground: #1e293b;
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 
-    --muted: #f1f5f9;
-    --muted-foreground: #64748b;
+  /* Spacing scale (4px base, matches Tailwind default) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
 
-    --accent: #f2f4f8;
-    --accent-foreground: #1e293b;
+  /* Typography */
+  --font-sans: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif);
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
 
-    --destructive: #f75454;
-    --destructive-foreground: #ffffff;
-
-    --border: #e2e8f0;
-    --input: #e2e8f0;
-    --ring: #66cfc4;
-
-    /* Custom SwiftHR Semantic Brand Tokens */
-    --brand-teal: #66cfc4;
-    --brand-blue: #005eff;
-    --brand-indigo: #191970;
-    --brand-orange: #f39034;
-    --brand-red: #f75454;
-
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: #161616;
-    --foreground: #f2f4f8;
-
-    --card: #272731;
-    --card-foreground: #f2f4f8;
-
-    --popover: #272731;
-    --popover-foreground: #f2f4f8;
-
-    --primary: #66cfc4;
-    --primary-foreground: #161616;
-
-    --secondary: #21272a;
-    --secondary-foreground: #f2f4f8;
-
-    --muted: #21272a;
-    --muted-foreground: #94a3b8;
-
-    --accent: #21272a;
-    --accent-foreground: #f2f4f8;
-
-    --destructive: #f75454;
-    --destructive-foreground: #ffffff;
-
-    --border: #3f3f46;
-    --input: #3f3f46;
-    --ring: #66cfc4;
-
-    /* Dark Mode Brand Token Overrides */
-    --brand-teal: #66cfc4;
-    --brand-blue: #3b82f6;
-    --brand-indigo: #95a4fc;
-    --brand-orange: #f39034;
-    --brand-red: #f75454;
-  }
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-@layer base {
-  * {
-    border-color: var(--border);
-  }
-  body {
-    background-color: var(--background);
-    color: var(--foreground);
-  }
+/* ==========================================================================
+   Base element styles
+   ========================================================================== */
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+/* ==========================================================================
+   Reusable component-level classes
+   (use these OR the Tailwind arbitrary-value equivalents already in the
+   codebase, e.g. bg-[var(--card)] — don't mix both patterns in one file)
+   ========================================================================== */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.card--status-valid {
+  border-color: var(--status-valid);
+}
+
+.card--status-danger {
+  border-color: var(--status-danger);
+  background: var(--status-danger-bg);
+}
+
+.btn-primary {
+  background: var(--brand-teal);
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-weight: 500;
+  transition: background 0.15s ease;
+}
+
+.btn-primary:hover {
+  background: var(--brand-teal-hover);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.input-field {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.input-field::placeholder {
+  color: var(--border);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.status-badge--valid {
+  color: var(--status-valid);
+}
+
+.status-badge--danger {
+  color: var(--status-danger);
 }
