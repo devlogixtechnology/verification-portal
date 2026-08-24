@@ -7,41 +7,41 @@ import {
   type Dispatch,
   type ReactNode,
 } from "react";
-import { verificationReducer, createInitialState, type Action } from "./verificationMachine";
-import type { VerificationConfig, VerificationState } from "../types/verification.types";
+import {
+  verificationReducer,
+  createInitialState,
+  type VerificationAction,
+} from "./verificationMachine";
+import type {
+  VerificationConfig,
+  VerificationState,
+} from "../types/verification.types";
 
 /** What `useVerification` returns. */
-type VerificationContextValue<TAsset, TErrorDetail> = {
+export type VerificationContextValue<TAsset = unknown, TErrorDetail = unknown> = {
   state: VerificationState<TAsset, TErrorDetail>;
-  dispatch: Dispatch<Action<TAsset, TErrorDetail>>;
+  dispatch: Dispatch<VerificationAction<TAsset, TErrorDetail>>;
   config: VerificationConfig<TAsset, TErrorDetail>;
 };
 
-// Context cannot carry type parameters of its own; `useVerification` reapplies
-// the caller's.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const VerificationContext = createContext<VerificationContextValue<any, any> | undefined>(undefined);
+// Context holds generic verification state; useVerification re-types for callers
+export const VerificationContext = createContext<
+  VerificationContextValue<unknown, unknown> | undefined
+>(undefined);
 
-type VerificationProviderProps<TAsset, TErrorDetail> = {
-  /** The project's backend and rendering adapter. */
+export type VerificationProviderProps<TAsset, TErrorDetail> = {
+  /** The project's backend and rendering adapter config. */
   config: VerificationConfig<TAsset, TErrorDetail>;
   children: ReactNode;
 };
 
 /**
- * Owns the verification state and shares it, along with the config, with every
- * screen below it. Wrap the verification routes in one of these.
+ * Top-level React Provider for the verification state machine.
  *
- * `TAsset` and `TErrorDetail` are inferred from `config`, so screens below get
- * a fully typed `state.result` without naming them again.
- *
- * ```tsx
- * <VerificationProvider config={verificationConfig}>
- *   {children}
- * </VerificationProvider>
- * ```
+ * Wrap the `/verify` route layout with this provider so all sub-routes
+ * share synchronized state, config, and dispatch.
  */
-function VerificationProvider<TAsset, TErrorDetail>({
+export function VerificationProvider<TAsset, TErrorDetail>({
   config,
   children,
 }: VerificationProviderProps<TAsset, TErrorDetail>) {
@@ -51,7 +51,14 @@ function VerificationProvider<TAsset, TErrorDetail>({
     () => createInitialState<TAsset, TErrorDetail>()
   );
 
-  const value = useMemo(() => ({ state, dispatch, config }), [state, config]);
+  const value = useMemo(
+    () => ({
+      state,
+      dispatch: dispatch as Dispatch<VerificationAction<unknown, unknown>>,
+      config: config as VerificationConfig<unknown, unknown>,
+    }),
+    [state, config]
+  );
 
   return (
     <VerificationContext.Provider value={value}>
@@ -59,6 +66,3 @@ function VerificationProvider<TAsset, TErrorDetail>({
     </VerificationContext.Provider>
   );
 }
-
-export { VerificationContext, VerificationProvider };
-export type { VerificationContextValue, VerificationProviderProps };

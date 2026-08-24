@@ -1,34 +1,56 @@
 /**
- * Public API of the verification feature. See ./README.md for setup.
- *
- * Anything not exported here is internal and may change.
+ * Public API of the Verification Feature Module.
  */
 
-// Mount this around the verification routes, then use these in any screen below.
-export { VerificationProvider } from "./state/VerificationProvider";
-export { useVerification } from "./state/useVerification";
-export { useSubmitToken } from "./hooks/useSubmitToken";
+// State Machine & React Context
+export {
+  VerificationProvider,
+  VerificationContext,
+  useVerification,
+  verificationReducer,
+  createInitialState,
+  type VerificationContextValue,
+  type VerificationProviderProps,
+  type VerificationAction,
+} from "./state";
 
-// The state machine, for testing a config against real transitions.
-export { verificationReducer, createInitialState } from "./state/verificationMachine";
+// Custom Hooks
+export { useSubmitToken, DEFAULT_INVALID_TOKEN_MESSAGE } from "./hooks/useSubmitToken";
 
-// Verify a token without React, from a server component or a test.
-export { verifyToken } from "./api/verification";
+// Network / API
+export { verifyToken, defaultBuildVerificationRequest, defaultIsHealthyResponse } from "./api/verification";
+export { requestWithRetry, DEFAULT_TIMEOUT_MS } from "./api/client";
+export { classifyNetworkError, classifyResponse, FAILURE_MESSAGES } from "./api/errors";
 
+// Config & Defaults
+export {
+  defaultVerificationConfig,
+  MOCK_VERIFIED_DOCUMENTS,
+  extractTokenFromInput,
+  validateTokenFormat,
+} from "./config/verification.config";
+
+// UI Components
+export { default as QRScanner } from "./scanner/QRScanner";
+export { TokenInputForm } from "./components/TokenInputForm";
+export { default as VerificationDashboard } from "./dashboard/VerificationDashboard";
+export { default as AssetDetails } from "./dashboard/AssetDetails";
+export { default as IssuerDetails } from "./dashboard/IssuerDetails";
+export { default as RecipientDetails } from "./dashboard/RecipientDetails";
+export { default as VerificationStatus } from "./dashboard/VerificationStatus";
+export { default as VerificationTimestamp } from "./dashboard/VerificationTimestamp";
+export { default as VerificationHeader } from "./dashboard/VerificationHeader";
+export { default as VerificationFooter } from "./dashboard/VerificationFooter";
+
+// Types
 export type {
   VerificationConfig,
   VerificationState,
-  VerificationStatus,
+  VerificationStatus as VerificationStatusType,
   ParsedVerificationResult,
   RequestOptions,
   VerificationIssuer,
   VerificationRecipient,
   VerifiedDocument,
+  VerificationErrorDetail,
 } from "./types/verification.types";
-
-export type {
-  VerificationContextValue,
-  VerificationProviderProps,
-} from "./state/VerificationProvider";
-
-export type { Action as VerificationAction } from "./state/verificationMachine";
