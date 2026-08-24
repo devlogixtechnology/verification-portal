@@ -16,6 +16,7 @@ import type {
   VerificationConfig,
   VerificationState,
 } from "../types/verification.types";
+import { defaultVerificationConfig } from "../config/verification.config";
 
 /** What `useVerification` returns. */
 export type VerificationContextValue<TAsset = unknown, TErrorDetail = unknown> = {
@@ -30,19 +31,16 @@ export const VerificationContext = createContext<
 >(undefined);
 
 export type VerificationProviderProps<TAsset, TErrorDetail> = {
-  /** The project's backend and rendering adapter config. */
-  config: VerificationConfig<TAsset, TErrorDetail>;
+  /** Optional override for verification configuration. Defaults to defaultVerificationConfig. */
+  config?: VerificationConfig<TAsset, TErrorDetail>;
   children: ReactNode;
 };
 
 /**
  * Top-level React Provider for the verification state machine.
- *
- * Wrap the `/verify` route layout with this provider so all sub-routes
- * share synchronized state, config, and dispatch.
  */
 export function VerificationProvider<TAsset, TErrorDetail>({
-  config,
+  config = defaultVerificationConfig as unknown as VerificationConfig<TAsset, TErrorDetail>,
   children,
 }: VerificationProviderProps<TAsset, TErrorDetail>) {
   const [state, dispatch] = useReducer(
