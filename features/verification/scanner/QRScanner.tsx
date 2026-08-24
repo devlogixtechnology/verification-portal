@@ -2,10 +2,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Card, CardContent } from "@/components/ui/Card";
-import { Spinner } from "@/components/ui/Spinner";
 import {
   extractTokenFromInput,
   validateTokenFormat,
@@ -46,27 +42,28 @@ export default function QRScanner({
       return;
     }
 
+    let isMounted = true;
+
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: "environment" } })
       .then((stream) => {
-        // Stop stream immediately — Html5Qrcode will create its own stream
+        // Stop stream immediately — Html5Qrcode will create its own managed stream
         stream.getTracks().forEach((track) => track.stop());
+        if (!isMounted) return;
         setPermissionState("granted");
 
         // Enumerate devices
         Html5Qrcode.getCameras()
           .then((devices) => {
-            if (devices && devices.length > 0) {
-              setCameras(devices);
-              // Pick back/environment camera if available
-              const backCam = devices.find(
-                (d) =>
-                  d.label.toLowerCase().includes("back") ||
-                  d.label.toLowerCase().includes("environment") ||
-                  d.label.toLowerCase().includes("rear")
-              );
-              setActiveCameraId(backCam ? backCam.id : devices[0].id);
-            }
+            if (!isMounted || !devices || devices.length === 0) return;
+            setCameras(devices);
+            const backCam = devices.find(
+              (d) =>
+                d.label.toLowerCase().includes("back") ||
+                d.label.toLowerCase().includes("environment") ||
+                d.label.toLowerCase().includes("rear")
+            );
+            setActiveCameraId(backCam ? backCam.id : devices[0].id);
           })
           .catch(() => {
             // Devices could not be enumerated, but camera might still work
@@ -74,8 +71,12 @@ export default function QRScanner({
       })
       .catch((err: unknown) => {
         console.warn("Camera permission denied or unavailable:", err);
-        setPermissionState("denied");
+        if (isMounted) setPermissionState("denied");
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Initialize and start scanner when granted
@@ -95,8 +96,8 @@ export default function QRScanner({
         await scanner.start(
           cameraConfig,
           {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
+            fps: 12,
+            qrbox: { width: 240, height: 240 },
             aspectRatio: 1.0,
           },
           (decodedText) => {
@@ -104,11 +105,17 @@ export default function QRScanner({
             const token = extractTokenFromInput(decodedText);
 
             if (token && validateTokenFormat(token)) {
-              onScanSuccess(token);
-              // Stop camera once verified token is obtained
+              // Gracefully stop camera before triggering parent navigation to prevent AbortError
               if (isScanningRef.current) {
                 isScanningRef.current = false;
-                scanner.stop().catch(() => {});
+                scanner
+                  .stop()
+                  .catch(() => {})
+                  .finally(() => {
+                    if (isMounted) onScanSuccess(token);
+                  });
+              } else {
+                onScanSuccess(token);
               }
             } else {
               if (onInvalidToken) onInvalidToken(decodedText);
@@ -118,9 +125,15 @@ export default function QRScanner({
             if (onScanFailure) onScanFailure(errorMessage);
           }
         );
-        isScanningRef.current = true;
-      } catch (err) {
-        console.warn("Failed to start html5-qrcode scanner:", err);
+        if (isMounted) {
+          isScanningRef.current = true;
+        }
+      } catch (err: unknown) {
+        // Silently ignore browser AbortError / Play interrupted during component transitions
+        const msg = String(err);
+        if (!msg.includes("AbortError") && !msg.includes("play()")) {
+          console.warn("Camera scanner start notice:", err);
+        }
       }
     };
 
@@ -134,7 +147,9 @@ export default function QRScanner({
           .stop()
           .catch(() => {})
           .finally(() => {
-            scannerInstanceRef.current?.clear();
+            try {
+              scannerInstanceRef.current?.clear();
+            } catch {}
           });
       }
     };
@@ -163,24 +178,24 @@ export default function QRScanner({
   // State: Checking Camera
   if (permissionState === "checking") {
     return (
-      <Card className="p-8 text-center sm:p-12">
-        <Spinner size="lg" label="Requesting camera access..." />
-        <h3 className="mt-4 text-lg font-semibold text-[var(--foreground)]">
+      <div className="rounded-3xl border border-[var(--border-default)] bg-[var(--surface-card)] p-8 text-center sm:p-12 shadow-xs">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-3 border-[var(--brand-teal)] border-t-transparent" />
+        <h3 className="mt-4 text-base font-bold text-[var(--text-primary)]">
           Requesting Camera Access
         </h3>
-        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          Please allow camera permission in your browser to scan QR codes.
+        <p className="mt-1 text-xs text-[var(--text-secondary)]">
+          Please allow camera permissions in your browser to scan QR codes.
         </p>
-      </Card>
+      </div>
     );
   }
 
   // State: Denied or Unsupported Camera
   if (permissionState === "denied" || permissionState === "unsupported") {
     return (
-      <Card className="p-6 sm:p-8">
+      <div className="rounded-3xl border border-[var(--border-default)] bg-[var(--surface-card)] p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col items-center text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--status-danger-bg)] text-[var(--status-danger)]">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--status-danger-bg)] text-[var(--status-danger)]">
             <svg
               className="h-7 w-7"
               fill="none"
@@ -196,99 +211,109 @@ export default function QRScanner({
             </svg>
           </div>
 
-          <h3 className="mt-4 text-xl font-bold text-[var(--foreground)]">
+          <h3 className="mt-4 text-lg font-bold text-[var(--text-primary)]">
             {permissionState === "denied"
               ? "Camera Access Denied"
               : "Camera Not Supported"}
           </h3>
 
-          <p className="mt-2 max-w-md text-sm text-[var(--muted-foreground)]">
+          <p className="mt-2 max-w-sm text-xs text-[var(--text-secondary)] leading-relaxed">
             {permissionState === "denied"
               ? "Camera permission was blocked. You can still verify any asset by entering the code manually below."
               : "Your device or browser does not support camera capture. Please enter the verification code manually."}
           </p>
 
-          <form onSubmit={handleManualSubmit} className="mt-6 w-full max-w-md space-y-4">
-            <Input
-              label="Verification Code"
+          <form onSubmit={handleManualSubmit} className="mt-6 w-full max-w-sm space-y-3">
+            <input
+              type="text"
               placeholder="e.g. CERT-2026-001"
               value={manualInput}
               onChange={(e) => {
                 setManualInput(e.target.value);
                 if (manualError) setManualError("");
               }}
-              errorMessage={manualError || undefined}
+              className={`w-full rounded-2xl border bg-[var(--surface-muted)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-teal)] ${
+                manualError ? "border-[var(--status-danger)]" : "border-[var(--border-default)]"
+              }`}
             />
 
-            <Button type="submit" variant="primary" className="w-full">
+            {manualError && (
+              <p className="text-xs text-[var(--status-danger)] font-medium text-left">
+                {manualError}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              className="w-full rounded-2xl bg-[var(--brand-teal)] py-3 text-sm font-bold text-white shadow-xs hover:bg-[var(--brand-teal-hover)] transition active:scale-98"
+            >
               Verify Document
-            </Button>
+            </button>
           </form>
 
           {/* Quick Demo Shortcuts */}
-          <div className="mt-8 border-t border-[var(--border-subtle)] pt-6 w-full max-w-md">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-              Quick Demo Codes
-            </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              <Button
+          <div className="mt-8 border-t border-[var(--border-subtle)] pt-5 w-full max-w-sm">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] block mb-3">
+              Quick Test Presets
+            </span>
+            <div className="flex flex-wrap justify-center gap-1.5">
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
                 onClick={() => onScanSuccess("CERT-2026-001")}
+                className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:border-[var(--brand-teal)] hover:text-[var(--brand-teal-dark)] transition"
               >
-                Sample Valid Cert
-              </Button>
-              <Button
+                Sample Valid
+              </button>
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
                 onClick={() => onScanSuccess("CERT-EXPIRED-002")}
+                className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:border-[var(--brand-teal)] hover:text-[var(--brand-teal-dark)] transition"
               >
-                Sample Expired Cert
-              </Button>
-              <Button
+                Sample Expired
+              </button>
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
                 onClick={() => onScanSuccess("CERT-REVOKED-003")}
+                className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:border-[var(--brand-teal)] hover:text-[var(--brand-teal-dark)] transition"
               >
-                Sample Revoked Cert
-              </Button>
+                Sample Revoked
+              </button>
             </div>
           </div>
         </div>
-      </Card>
+      </div>
     );
   }
 
   // State: Granted (Active Camera Viewfinder)
   return (
-    <Card className="overflow-hidden">
-      <div className="relative flex min-h-[340px] flex-col items-center justify-center bg-black">
+    <div className="rounded-3xl border border-[var(--border-default)] bg-[var(--surface-card)] overflow-hidden shadow-xs">
+      <div className="relative flex min-h-[320px] flex-col items-center justify-center bg-black">
         {/* html5-qrcode target mount */}
         <div id={qrRegionId} className="w-full max-w-sm overflow-hidden" />
 
         {/* Viewfinder Target Frame Overlay */}
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="relative h-60 w-60 rounded-2xl border-2 border-[var(--brand-teal)] shadow-[0_0_0_9999px_rgba(0,0,0,0.55)]">
-            <span className="absolute -top-1 -left-1 h-5 w-5 border-t-4 border-l-4 border-[var(--brand-teal)] rounded-tl" />
-            <span className="absolute -top-1 -right-1 h-5 w-5 border-t-4 border-r-4 border-[var(--brand-teal)] rounded-tr" />
-            <span className="absolute -bottom-1 -left-1 h-5 w-5 border-b-4 border-l-4 border-[var(--brand-teal)] rounded-bl" />
-            <span className="absolute -bottom-1 -right-1 h-5 w-5 border-b-4 border-r-4 border-[var(--brand-teal)] rounded-br" />
+          <div className="relative h-56 w-56 rounded-3xl border-2 border-[var(--brand-teal)] shadow-[0_0_0_9999px_rgba(0,0,0,0.55)]">
+            <span className="absolute -top-1 -left-1 h-5 w-5 border-t-4 border-l-4 border-[var(--brand-teal)] rounded-tl-xl" />
+            <span className="absolute -top-1 -right-1 h-5 w-5 border-t-4 border-r-4 border-[var(--brand-teal)] rounded-tr-xl" />
+            <span className="absolute -bottom-1 -left-1 h-5 w-5 border-b-4 border-l-4 border-[var(--brand-teal)] rounded-bl-xl" />
+            <span className="absolute -bottom-1 -right-1 h-5 w-5 border-b-4 border-r-4 border-[var(--brand-teal)] rounded-br-xl" />
+            {/* Animated Laser Guide */}
+            <div className="absolute left-2 right-2 h-0.5 bg-[var(--brand-teal)] shadow-[0_0_8px_#0acab7] animate-laser-scan" />
           </div>
         </div>
 
         {/* Camera Switcher (if multiple cameras detected) */}
         {cameras.length > 1 && (
-          <div className="absolute top-4 right-4 z-10">
+          <div className="absolute top-3 right-3 z-10">
             <button
               type="button"
               onClick={handleCameraToggle}
               className="rounded-full bg-black/60 p-2 text-white backdrop-blur hover:bg-black/80 transition"
               title="Switch Camera"
             >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
@@ -296,32 +321,37 @@ export default function QRScanner({
         )}
       </div>
 
-      <CardContent className="p-6">
-        <p className="text-center text-xs font-medium text-[var(--muted-foreground)]">
+      <div className="p-4 sm:p-5">
+        <p className="text-center text-xs font-medium text-[var(--text-secondary)]">
           Align the QR code within the frame to verify automatically.
         </p>
 
         {/* Demo Simulation Controls */}
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 border-t border-[var(--border-subtle)] pt-4">
-          <span className="text-xs text-[var(--muted-foreground)]">Test Simulation:</span>
-          <Button
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 border-t border-[var(--border-subtle)] pt-3">
+          <span className="text-[11px] font-semibold text-[var(--text-muted)]">Test Presets:</span>
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
             onClick={() => onScanSuccess("CERT-2026-001")}
+            className="rounded-lg bg-[var(--surface-muted)] px-2.5 py-1 text-[11px] font-semibold text-[var(--brand-teal-dark)] hover:bg-[var(--brand-teal-light)] transition"
           >
-            Simulate Valid Code
-          </Button>
-          <Button
+            Valid Code
+          </button>
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
             onClick={() => onScanSuccess("CERT-EXPIRED-002")}
+            className="rounded-lg bg-[var(--surface-muted)] px-2.5 py-1 text-[11px] font-semibold text-[var(--status-warning)] hover:bg-amber-50 transition"
           >
-            Simulate Expired
-          </Button>
+            Expired Code
+          </button>
+          <button
+            type="button"
+            onClick={() => onScanSuccess("CERT-REVOKED-003")}
+            className="rounded-lg bg-[var(--surface-muted)] px-2.5 py-1 text-[11px] font-semibold text-[var(--status-danger)] hover:bg-red-50 transition"
+          >
+            Revoked Code
+          </button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -6,11 +6,10 @@ import type {
   VerificationErrorDetail,
   VerifiedDocument,
 } from "@/features/verification/types/verification.types";
-import VerificationDashboard from "@/features/verification/dashboard/VerificationDashboard";
-import VerificationHeader from "@/features/verification/dashboard/VerificationHeader";
-import VerificationFooter from "@/features/verification/dashboard/VerificationFooter";
-import { Card } from "@/components/ui/Card";
-import { Spinner } from "@/components/ui/Spinner";
+import CaPassDashboard from "@/features/verification/dashboard/CaPassDashboard";
+import CaFailDashboard from "@/features/verification/dashboard/CaFailDashboard";
+import LoadingPulse from "@/features/verification/components/LoadingPulse";
+import NetworkErrorView from "@/features/verification/components/NetworkErrorView";
 
 interface VerifyTokenPageProps {
   params: Promise<{ token: string }>;
@@ -32,41 +31,45 @@ export default function VerifyTokenPage({ params }: VerifyTokenPageProps) {
     }
   }, [token, submitToken]);
 
-  // Loading / Verifying State
+  // Loading State (Screen 2 3-dot animation)
   if (state.status === "verifying" || state.status === "idle") {
+    return <LoadingPulse label={`Verifying ${token}...`} />;
+  }
+
+  // Network / Server Error State (Screen 3)
+  if (state.status === "error") {
     return (
-      <div className="space-y-6">
-        <VerificationHeader />
-
-        <Card className="p-8 sm:p-12 text-center shadow-md">
-          <div className="mx-auto max-w-sm flex flex-col items-center">
-            <Spinner size="xl" label="Verifying credential authenticity..." />
-
-            <h2 className="mt-6 text-xl font-bold tracking-tight text-[var(--foreground)] sm:text-2xl">
-              Verifying Document Authenticity
-            </h2>
-
-            <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-              Querying the official registry and verifying cryptographic signature...
-            </p>
-
-            <div className="mt-6 w-full rounded-xl bg-[var(--background)] p-3 font-mono text-xs text-[var(--muted-foreground)]">
-              Token: <span className="font-semibold text-[var(--foreground)]">{token}</span>
-            </div>
-          </div>
-        </Card>
-
-        <VerificationFooter />
-      </div>
+      <NetworkErrorView
+        message={
+          state.errorMessage ||
+          "There was a problem in verifying your asset. Please check your network and try again."
+        }
+        onRetry={retry}
+      />
     );
   }
 
-  // Completed State: Verified, Invalid, or Error
-  return (
-    <VerificationDashboard
-      state={state}
-      onRetry={retry}
-      onReset={reset}
-    />
-  );
+  // Rejection / Expiration State (Screen 5)
+  if (state.status === "invalid") {
+    return (
+      <CaFailDashboard
+        message={state.errorMessage || undefined}
+        expirationDate={state.result?.expirationDate}
+        reason={state.errorDetail?.reason}
+        onVerifyAnother={reset}
+      />
+    );
+  }
+
+  // Verified Authenticity State (Screen 4)
+  if (state.status === "verified" && state.result) {
+    return (
+      <CaPassDashboard
+        document={state.result}
+        onVerifyAnother={reset}
+      />
+    );
+  }
+
+  return null;
 }

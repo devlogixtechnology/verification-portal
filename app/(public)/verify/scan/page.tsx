@@ -4,9 +4,6 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import QRScanner from "@/features/verification/scanner/QRScanner";
-import VerificationHeader from "@/features/verification/dashboard/VerificationHeader";
-import VerificationFooter from "@/features/verification/dashboard/VerificationFooter";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
 export default function ScanPage() {
@@ -23,52 +20,43 @@ export default function ScanPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <VerificationHeader />
-
+    <div className="w-full space-y-4">
       <div className="flex items-center justify-between">
         <Link href="/verify">
           <Button
             variant="ghost"
             size="sm"
             leftIcon={
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              <svg className="h-4 w-4 text-[var(--brand-teal)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
             }
+            className="text-xs font-semibold text-[var(--brand-teal)] hover:text-[var(--brand-teal-hover)] px-2"
           >
-            Back to Manual Entry
+            Back to Verify
           </Button>
         </Link>
       </div>
 
-      <Card className="shadow-md">
-        <CardHeader className="text-center sm:text-left">
-          <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold uppercase tracking-widest text-[var(--brand-teal)]">
-            <span className="flex h-2 w-2 rounded-full bg-[var(--brand-teal)]" />
-            <span>Live Camera Scanner</span>
-          </div>
-          <CardTitle className="mt-2">Scan Document QR Code</CardTitle>
-          <CardDescription>
-            Point your camera at the QR code located on the document or certificate.
-          </CardDescription>
-        </CardHeader>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-extrabold tracking-tight text-[var(--brand-teal)]">
+          Scan QR Code
+        </h1>
+        <p className="text-xs text-[var(--muted-foreground)]">
+          Point your device camera at the asset QR code.
+        </p>
+      </div>
 
-        <CardContent className="pt-2">
-          {scanNotice && (
-            <div className="mb-4 rounded-xl bg-[var(--brand-teal)]/10 border border-[var(--brand-teal)]/20 p-3 text-center text-xs font-medium text-[var(--brand-indigo)]">
-              {scanNotice}
-            </div>
-          )}
+      {scanNotice && (
+        <div className="rounded-2xl bg-[var(--brand-teal)]/10 border border-[var(--brand-teal)]/20 p-3 text-center text-xs font-medium text-[var(--brand-indigo)]">
+          {scanNotice}
+        </div>
+      )}
 
-          <QRScanner
-            onScanSuccess={handleScanSuccess}
-            onInvalidToken={handleInvalidToken}
-          />
-        </CardContent>
-      </Card>
-
-      <VerificationFooter />
+      <QRScanner
+        onScanSuccess={handleScanSuccess}
+        onInvalidToken={handleInvalidToken}
+      />
     </div>
   );
 }

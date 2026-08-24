@@ -32,15 +32,12 @@ export {
 
 // UI Components
 export { default as QRScanner } from "./scanner/QRScanner";
-export { TokenInputForm } from "./components/TokenInputForm";
+export { default as LandingVerificationView } from "./components/LandingVerificationView";
+export { default as LoadingPulse } from "./components/LoadingPulse";
+export { default as NetworkErrorView } from "./components/NetworkErrorView";
 export { default as VerificationDashboard } from "./dashboard/VerificationDashboard";
-export { default as AssetDetails } from "./dashboard/AssetDetails";
-export { default as IssuerDetails } from "./dashboard/IssuerDetails";
-export { default as RecipientDetails } from "./dashboard/RecipientDetails";
-export { default as VerificationStatus } from "./dashboard/VerificationStatus";
-export { default as VerificationTimestamp } from "./dashboard/VerificationTimestamp";
-export { default as VerificationHeader } from "./dashboard/VerificationHeader";
-export { default as VerificationFooter } from "./dashboard/VerificationFooter";
+export { default as CaPassDashboard } from "./dashboard/CaPassDashboard";
+export { default as CaFailDashboard } from "./dashboard/CaFailDashboard";
 
 // Types
 export type {
