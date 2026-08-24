@@ -1,131 +1,117 @@
 @import "tailwindcss";
 
 :root {
-  /* Brand */
+  /* Brand Teal Palette */
   --brand-teal: #0acab7;
-  --brand-teal-hover: #09b6a5; /* ~8% darker, for hover/active states */
-  --brand-indigo: #1a1a2e; /* dark text-on-teal — adjust once confirmed against Figma */
+  --brand-teal-hover: #08b6a4;
+  --brand-teal-dark: #009688;
+  --brand-teal-light: #e6fbf8;
+  --brand-teal-border: rgba(10, 202, 183, 0.4);
+  --brand-teal-glow: rgba(10, 202, 183, 0.15);
 
-  /* Semantic status */
-  --status-valid: #0acab7;
-  --status-danger: #d63636;
-  --status-danger-bg: #fdecec; /* light tint for error surfaces/badges */
+  /* Deep Navy & Slate */
+  --brand-navy: #121826;
+  --brand-navy-hover: #1e293b;
+  --brand-slate: #334155;
 
-  /* Neutrals */
-  --background: #f8f8f8;
-  --card: #ffffff;
-  --foreground: #222222;
-  --muted-foreground: #6b6b6b; /* derived — confirm against Figma if a mid-gray text token exists */
-  --border: #b1b1b1;
-  --border-subtle: #e2e2e2; /* lighter divider variant, e.g. card hairlines */
-
-  /* Nav / chrome */
-  --nav-icon: #000000;
-  --nav-bg: var(--brand-teal);
-
-  /* Radius */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-
-  /* Spacing scale (4px base, matches Tailwind default) */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-6: 24px;
-  --space-8: 32px;
+  /* Surfaces & Backgrounds */
+  --background: #f8fafc;
+  --surface-card: #ffffff;
+  --surface-muted: #f1f5f9;
 
   /* Typography */
-  --font-sans: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif);
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.5rem;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
 
-  /* Shadow */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  /* Borders */
+  --border-default: #e2e8f0;
+  --border-subtle: #f1f5f9;
+
+  /* Status Colors */
+  --status-success: #0acab7;
+  --status-danger: #e11d48;
+  --status-danger-bg: #fff1f2;
+  --status-warning: #f59e0b;
+  --status-warning-bg: #fffbeb;
+
+  /* Fonts */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
-
-/* ==========================================================================
-   Base element styles
-   ========================================================================== */
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: var(--background);
+  color: var(--text-primary);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ==========================================================================
-   Reusable component-level classes
-   (use these OR the Tailwind arbitrary-value equivalents already in the
-   codebase, e.g. bg-[var(--card)] — don't mix both patterns in one file)
-   ========================================================================== */
-
-.card {
-  background: var(--card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
+/* Ambient Radial Mesh Background */
+.bg-portal-mesh {
+  background-image:
+    radial-gradient(at 50% 0%, rgba(10, 202, 183, 0.12) 0px, transparent 65%),
+    radial-gradient(at 100% 100%, rgba(18, 24, 38, 0.04) 0px, transparent 55%),
+    radial-gradient(at 0% 100%, rgba(10, 202, 183, 0.06) 0px, transparent 55%);
 }
 
-.card--status-valid {
-  border-color: var(--status-valid);
+/* 3-Dot Pulse Loading Animations */
+@keyframes centerPing {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+    box-shadow: 0 0 20px var(--brand-teal-glow);
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
 }
 
-.card--status-danger {
-  border-color: var(--status-danger);
-  background: var(--status-danger-bg);
+.animate-pulse-center {
+  animation: centerPing 1.8s ease-in-out infinite;
 }
 
-.btn-primary {
-  background: var(--brand-teal);
-  color: #ffffff;
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-  font-weight: 500;
-  transition: background 0.15s ease;
+/* Laser Scanner Beam */
+@keyframes laserScanAnimation {
+  0% {
+    top: 5%;
+    opacity: 0.8;
+  }
+  50% {
+    top: 90%;
+    opacity: 1;
+  }
+  100% {
+    top: 5%;
+    opacity: 0.8;
+  }
 }
 
-.btn-primary:hover {
-  background: var(--brand-teal-hover);
+.animate-laser-scan {
+  animation: laserScanAnimation 2.2s ease-in-out infinite;
 }
 
-.btn-secondary {
-  background: transparent;
-  color: var(--foreground);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
+/* Mockup Specific Metric Card */
+.mockup-metric-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 1.5rem;
+  border: 2px solid var(--brand-teal);
+  background-color: var(--surface-card);
+  padding: 1.25rem;
+  min-height: 112px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
 }
 
-.input-field {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-3);
-  background: var(--card);
-  color: var(--foreground);
-}
-
-.input-field::placeholder {
-  color: var(--border);
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
-.status-badge--valid {
-  color: var(--status-valid);
-}
-
-.status-badge--danger {
-  color: var(--status-danger);
+.mockup-metric-card:hover {
+  box-shadow: 0 6px 16px var(--brand-teal-glow);
+  transform: translateY(-1px);
 }
