@@ -37,6 +37,15 @@ export interface RequestOptions {
   headers?: Record<string, string>;
   /** Serialised as JSON. Omit for requests without a body. */
   body?: unknown;
+  /**
+   * Marks the request as safe to send twice, which enables the single automatic
+   * retry after a connection failure.
+   *
+   * `GET` is assumed idempotent. Set this on a `POST` that only reads — a
+   * verification lookup, for instance — so a dropped connection is retried
+   * instead of surfacing as an error the user has to clear by hand.
+   */
+  idempotent?: boolean;
 }
 
 /**
