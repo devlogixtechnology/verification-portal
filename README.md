@@ -6,6 +6,28 @@ An enterprise-grade, responsive Next.js web application engineered with a pure f
 
 ---
 
+## 🐳 One-Command Full-Stack Docker Setup
+
+Run the entire ecosystem (Next.js Frontend + Express Backend + PostgreSQL Database) in a single command:
+
+```bash
+docker compose up --build
+```
+
+### Services Started:
+| Service | URL / Port | Purpose |
+|---|---|---|
+| **Frontend Portal** | [http://localhost:3000](http://localhost:3000) | Next.js Responsive Verification UI & Scanner |
+| **Core Backend API** | [http://localhost:5000](http://localhost:5000) | Express, Prisma, JWT Auth & Verification Services |
+| **PostgreSQL Database** | `localhost:5432` | Relational document registry & audit log storage |
+
+To stop all services:
+```bash
+docker compose down
+```
+
+---
+
 ## 🎯 Executive Summary & Highlights (For Meeting Presentations)
 
 * **Architecture Grade**: **9.4 / 10** modular structure with total separation of concerns (`features/verification/` encapsulates state machine, API client, contracts, scanner, and dashboards).
@@ -13,7 +35,7 @@ An enterprise-grade, responsive Next.js web application engineered with a pure f
 * **Responsive Multi-Device UX**: Custom-tailored layouts for both mobile (440px native-style card frame with slide-over drawer) and desktop (elevated glass card, direct pill navigation, no redundant hamburger).
 * **Zero-Leak Design Tokens**: Centralized in `app/globals.css` with semantic CSS variables (`--brand-teal`, `--brand-navy`, `--surface-card`, etc.).
 * **Automated Unit Test Suite**: 14/14 automated unit tests running in `< 200ms` via `npm test` without heavy external dependencies.
-* **Production Build Verified**: 100% type-safe with zero TypeScript, ESLint, or Next.js build errors across all 7 routes.
+* **Production Build Verified**: 100% type-safe with zero TypeScript, ESLint, or Next.js build errors across all routes.
 
 ---
 
@@ -69,6 +91,16 @@ Use these pre-configured reference codes during meetings and test walkthroughs t
 ## 🛠️ Project Structure & Architecture
 
 ```
+├── docker-compose.yml                 # Full-stack Docker orchestration (Postgres, Backend, Frontend)
+├── Dockerfile                         # Production multi-stage Next.js Dockerfile
+│
+├── backend/                           # Backend Squad A (Documents-Validation Core Service)
+│   └── core-backend/
+│       ├── Dockerfile                 # Backend container definition
+│       ├── prisma/                    # Database schema & migrations
+│       ├── src/controllers/           # Verification & Auth controllers
+│       └── server.js                  # Express API server (Port 5000)
+│
 ├── app/                               # Next.js App Router Layer
 │   ├── (public)/
 │   │   └── verify/
@@ -77,11 +109,11 @@ Use these pre-configured reference codes during meetings and test walkthroughs t
 │   │       ├── scan/page.tsx          # /verify/scan camera viewfinder route
 │   │       └── [token]/page.tsx       # /verify/[token] dynamic state-driven result page
 │   ├── api/
-│   │   └── verify/[token]/route.ts    # REST verification endpoint with Edge Cache headers
+│   │   ├── auth/login/route.ts        # Auth login proxy to core backend
+│   │   └── verify/[token]/route.ts    # REST verification gateway with Edge Cache headers
 │   ├── login/page.tsx                 # Branded Admin & API Testing screen
 │   ├── layout.tsx                     # Single Root Shell: Header, centered container, Footer, SEO JSON-LD
-│   ├── globals.css                    # Design token system & custom CSS keyframe animations
-│   └── page.tsx                       # Root redirect / landing view
+│   └── globals.css                    # Design token system & custom CSS keyframe animations
 │
 ├── features/verification/             # Encapsulated Core Verification Module
 │   ├── api/                           # HTTP client, fetch wrapper with retry, error classification
@@ -111,22 +143,25 @@ Use these pre-configured reference codes during meetings and test walkthroughs t
 
 ## 🚦 Getting Started & Quick Commands
 
-### 1. Installation
+### 1. Run Everything via Docker
 ```bash
-npm install
+docker compose up --build
 ```
 
-### 2. Run Development Server
+### 2. Local Node Development
 ```bash
+# Frontend
 npm run dev
+
+# Backend
+npm run backend:dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### 3. Run Automated Tests
 ```bash
 npm test
 ```
-Executes all 14 unit test cases across the FSM, regex parsers, and API mock contracts in `< 200ms`.
+Executes all 14 unit test cases across the FSM, regex parsers, and API mock contracts in `< 100ms`.
 
 ### 4. Run Code Linter
 ```bash
@@ -137,7 +172,6 @@ npm run lint
 ```bash
 npm run build
 ```
-Typechecks and compiles all 7 static and dynamic Next.js routes.
 
 ---
 
@@ -169,15 +203,6 @@ All colors, borders, and animations are strictly controlled through CSS variable
   --status-warning: #f59e0b;
 }
 ```
-
----
-
-## 🔍 SEO & Security Highlights
-
-* **Rich JSON-LD Schema**: Embedded `WebApplication` schema with `SecurityApplication` category for search engine indexing and trust ranking.
-* **OpenGraph & Twitter Cards**: Dynamic social sharing preview cards displaying the official DevLogix brand mark.
-* **Edge Cache-Control**: API responses feature `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400` to ensure single-digit millisecond response times on CDN edges.
-* **Camera Stream Safety**: Camera stream unmounting is guarded against browser `AbortError` race conditions during page transitions.
 
 ---
 

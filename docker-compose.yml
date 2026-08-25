@@ -1,0 +1,63 @@
+services:
+  # 1. PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: devlogix-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devlogix_password
+      POSTGRES_DB: document_validation
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d document_validation"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Express Backend (Squad A Core Architecture)
+  backend:
+    build:
+      context: ./backend/core-backend
+      dockerfile: ../../Dockerfile.backend
+    container_name: devlogix-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://postgres:devlogix_password@postgres:5432/document_validation?schema=public
+      JWT_SECRET: devlogix_super_secret_jwt_key_2026
+      JWT_EXPIRES_IN: 7d
+      FRONTEND_URL: http://localhost:3000
+      INTERNAL_API_KEY: devlogix_shared_internal_key
+      VERIFICATION_BASE_URL: http://localhost:3000/verify
+      PUBLIC_BASE_URL: http://localhost:3000
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 3. Next.js Frontend (Verification Portal)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: devlogix-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      BACKEND_API_URL: http://backend:5000
+      NEXT_PUBLIC_API_URL: http://localhost:5000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+    driver: local
