@@ -48,15 +48,15 @@ Tasks 2 and 3 can run in parallel once Task 1 lands. Task 4 (login/signup) has n
 ### Phase 0 — Setup (done)
 
 - [X] Feature-based folder structure established
-- [X] `CLAUDE.md`, `folder-structure.md`, `routing-state-plan.md`, `README.md` scaffolded
-- [X] RTK Query pattern drafted (`verificationApi.ts`)
+- [X] `CLAUDE.md` and `README.md` scaffolded
+- [X] ~~RTK Query pattern drafted~~ — superseded; see the state-tool decision in Phase 1
 
 ### Phase 1 — State Management & Routing (foundation)
 
 - [X] Map every route explicitly: `/verify`, `/verify/scan`, `/verify/[token]` (no `/result` route — the token page renders the outcome directly)
 - [X] Define state machine: `idle → verifying → verified | invalid | error` (no `scanning` state — the camera is local UI inside `QRScanner`, and a scan just produces a token)
 - [X] Decide state tool: **React Context + useReducer**. RTK Query was dropped — the portal holds one short-lived verification at a time, needs no cross-route cache, and the module must not force a store on a consuming project. `store/` was removed.
-- [X] Document routing + state plan as a short reference doc — `docs/ARCHITECTURE_STATE.md`
+- [X] Document routing + state plan — now in the root `README.md` and `features/verification/README.md`
 - [ ] Review with squad before Tasks 2–4 begin
 
 ### Phase 2 — QR Scanner (parallel with Phase 3)

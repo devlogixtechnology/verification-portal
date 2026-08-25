@@ -1,51 +1,26 @@
-# Verification
+# Verification module
 
-A portable QR / token asset verification module. Copy this folder into a
-project, write one config object, mount the provider — no file inside this
-folder needs editing.
+Copy this folder into a project, write one config object, mount the provider.
+No file in here needs editing.
 
-The module owns the token flow, the network layer, the state machine, and the
-screens that are the same everywhere (entry, scanning, loading, failure). The
-consuming project owns its backend, its routes, its asset shape, and what a
-verified result looks like.
+It handles the token flow, the network, the state machine, and the screens that
+are the same everywhere — entry, scanning, loading, failure. Your project brings
+its backend, its routes, its asset shape, and what a verified result looks like.
 
-**Requires:** React 19+, and `html5-qrcode` if you use the scanner.
-
----
-
-## How it works
-
-```
-raw input ──▶ parseToken ──▶ isValidTokenFormat ──▶ buildVerificationRequest
-(QR payload,                        │                        │
- pasted code)                       │                        ▼
-                                    │                  HTTP request
-                                    │                        │
-                                    ▼                        ▼
-                             status: invalid    parseVerificationResponse
-                                                             │
-                                    ┌────────────────────────┼──────────────┐
-                                    ▼                        ▼              ▼
-                            status: verified        status: invalid   status: error
-                                    │                        │
-                            renderVerified            renderInvalid
-```
-
-The named steps are yours. Everything between them is handled here.
+**Needs:** React 19+, and `html5-qrcode` if you use the scanner.
 
 ---
 
 ## Setup
 
-### 1. Load the styles
+**1. Load the styles.**
 
 ```css
-/* your global stylesheet */
-@import "../features/verification/styles/tokens.css";       /* the token contract */
-@import "../features/verification/styles/verification.css"; /* the components */
+@import "features/verification/styles/tokens.css";       /* the design tokens */
+@import "features/verification/styles/verification.css";  /* the components */
 ```
 
-### 2. Define a config
+**2. Write a config.**
 
 ```tsx
 import type { VerificationConfig } from "@/features/verification";
@@ -56,9 +31,6 @@ type Rejection = { reason: "expired" | "revoked" };
 export const config: VerificationConfig<Certificate, Rejection> = {
   apiBaseUrl: "https://api.example.com",
 
-  parseToken: (raw) => raw.split("/").pop() ?? null,
-  isValidTokenFormat: (token) => /^CERT-\d{4}$/.test(token),
-
   parseVerificationResponse: (body) => {
     const res = body as { status: string; message: string; doc?: Certificate };
     return res.status === "valid" && res.doc
@@ -67,9 +39,9 @@ export const config: VerificationConfig<Certificate, Rejection> = {
   },
 
   onNavigate: (route) => {
-    if (route.name === "start") router.push("/verify");
-    else if (route.name === "scanner") router.push("/verify/scan");
-    else router.push(`/verify/${route.token}`);
+    if (route.name === "start")   return router.push("/verify");
+    if (route.name === "scanner") return router.push("/verify/scan");
+    router.push(`/verify/${route.token}`);
   },
 
   renderVerified: (cert, actions) => (
@@ -78,59 +50,50 @@ export const config: VerificationConfig<Certificate, Rejection> = {
 };
 ```
 
-### 3. Mount the provider and drop in the screens
+**3. Mount it, and drop in the screens.**
 
 ```tsx
 // layout
 <VerificationProvider config={config}>{children}</VerificationProvider>
 
-// /verify
-<TokenEntryView />
-
-// /verify/scan
-<QRScanner />
-
-// /verify/[token]
-<VerificationView token={token} />
+// /verify           <TokenEntryView />
+// /verify/scan      <QRScanner />
+// /verify/[token]   <VerificationView token={token} />
 ```
 
-That is the whole integration. `TAsset` and `TErrorDetail` are inferred from the
-config, so `state.result` is typed everywhere below the provider.
+Done. `TAsset` and `TErrorDetail` are inferred from the config, so `state.result`
+is typed everywhere below the provider.
 
 ---
 
-## What you define
+## The config
 
-| Field | Required | Default if omitted | Purpose |
+| Field | Required | Default | Does |
 | --- | --- | --- | --- |
-| `apiBaseUrl` | Yes | — | Origin and path prefix, no trailing slash |
-| `parseVerificationResponse` | Yes | — | Turns a response body into an outcome |
-| `renderVerified` | Yes | — | Renders the verified asset |
-| `onNavigate` | Yes | — | Maps the module's route intents to your URLs |
-| `parseToken` | No | Input is used as the token | Pulls a token from a QR payload or URL |
-| `isValidTokenFormat` | No | Any non-empty token is accepted | Rejects malformed input before any request |
-| `buildVerificationRequest` | No | `GET {apiBaseUrl}/verify/{token}` | Path, method, headers, body |
-| `isHealthyResponse` | No | `response.ok` | Whether a response carries a usable body |
-| `renderInvalid` | No | The module's default rejection screen | Renders a rejection |
-| `messages` | No | Built-in English copy | Overrides any user-facing string |
+| `apiBaseUrl` | ● | — | Origin and path prefix, no trailing slash |
+| `parseVerificationResponse` | ● | — | Turns a response body into an outcome |
+| `onNavigate` | ● | — | Maps route intents to your URLs |
+| `renderVerified` | ● | — | Renders the verified asset |
+| `parseToken` | | Input is the token | Pulls a token from a QR payload or URL |
+| `isValidTokenFormat` | | Anything non-empty | Rejects bad input before any request |
+| `buildVerificationRequest` | | `GET {base}/verify/{token}` | Path, method, headers, body |
+| `isHealthyResponse` | | `response.ok` | Whether a response has a usable body |
+| `renderInvalid` | | Built-in screen | Renders a rejection |
+| `messages` | | Built-in English | Overrides any user-facing string |
 
-### The scan button
+### Outcomes
 
-`TokenEntryView` reads camera permission *passively*, through the Permissions
-API, which shows no prompt. The button then says what it will actually do:
+`parseVerificationResponse` returns one of three things:
 
-| Permission | Label | On click |
-| --- | --- | --- |
-| already granted | Begin scan | opens the scanner |
-| not yet asked | Request camera permission | asks, then opens the scanner if granted |
-| blocked / unsupported | Camera blocked / unavailable | points the user at the code field |
-
-`QRScanner` passes `requestOnMount` instead, since a user who opened the scan
-screen has already committed.
+```ts
+{ outcome: "verified", result: TAsset }                    // genuine
+{ outcome: "rejected", message: string, detail?: TDetail } // the answer is no
+{ outcome: "failed",   message: string }                   // no answer available
+```
 
 ### Navigation
 
-The module never knows your URLs. It asks to go somewhere:
+The module never knows your URLs. It asks to go somewhere and you decide where:
 
 ```ts
 onNavigate: (route) => {
@@ -142,27 +105,27 @@ onNavigate: (route) => {
 }
 ```
 
-### Placeholders and error copy
-
-Never put the token format in a placeholder or an error message. `"CERT-0000"`
-tells anyone who opens the page exactly what shape to guess against, and a
-verification code is the only thing standing between a stranger and someone
-else's document. The defaults are deliberately vague ("Code", "That doesn't look
-like a valid code"); keep any override the same way, and enforce the real format
-in `isValidTokenFormat`, which never reaches the user.
-
-### Auth headers
-
-Headers are per-request:
+### Requests
 
 ```ts
 buildVerificationRequest: (token) => ({
-  path: "/assets/verify",
+  path: "/verify/qr-code",
   method: "POST",
   headers: { Authorization: `Bearer ${apiKey}` },
-  body: { token },
+  body: { qrCodeId: token },
+  idempotent: true,   // a read-only POST — safe to retry after a dropped connection
 }),
 ```
+
+`GET` is retried once automatically after a connection failure. A `POST` is not,
+unless you mark it `idempotent`.
+
+### Don't publish the token format
+
+Keep placeholders and error copy vague. `"CERT-0000"` in a placeholder tells
+anyone who opens the page exactly what to guess against, and the code is the only
+thing between a stranger and someone else's document. Put the real rule in
+`isValidTokenFormat`, which the user never sees.
 
 ---
 
@@ -170,108 +133,119 @@ buildVerificationRequest: (token) => ({
 
 Read from `useVerification().state.status`.
 
-| Status | Meaning | Populated fields |
+| Status | Means | Has |
 | --- | --- | --- |
 | `idle` | Waiting for input | — |
 | `verifying` | Request in flight | `token` |
-| `verified` | The asset is genuine | `token`, `result` |
-| `invalid` | The backend answered, and the answer is no | `token`, `errorMessage`, `errorDetail` |
-| `error` | The answer could not be obtained | `token`, `errorMessage` |
+| `verified` | Genuine | `token`, `result` |
+| `invalid` | The backend said no | `token`, `errorMessage`, `errorDetail` |
+| `error` | No answer obtainable | `token`, `errorMessage` |
 
-Fields never outlive their status: a previous error is cleared before the next
-request starts, and a result is cleared when a retry fails. Screens can read
-`state.result` without defending against stale values.
+Fields never outlive their status — a previous error is cleared before the next
+request, and a result is cleared when a retry fails. Read `state.result` without
+defending against stale values.
 
 ---
 
-## Who decides what failed
+## Who decides a failure
 
 | Situation | Decided by | Status |
 | --- | --- | --- |
-| Connection lost, DNS failure | The module | `error` |
+| Lost connection, DNS | The module | `error` |
 | Timeout (10s), `408`, `504` | The module | `error` |
 | `5xx` | The module | `error` |
-| Response body is not JSON | The module | `error` |
-| `4xx` — expired, revoked, unknown | `parseVerificationResponse` | `invalid` |
-| Healthy response | `parseVerificationResponse` | `verified` or `invalid` |
+| Body is not JSON | The module | `error` |
+| `4xx` with a body | Your parser | `invalid` |
+| Healthy response | Your parser | `verified` or `invalid` |
 
-`4xx` goes to your parser because only you know whether a `404` means "expired"
-or "never existed". Return `{ outcome: "failed", message }` to route one to the
-error screen instead. Failed `GET`s retry once; `POST`s never do.
+`4xx` goes to your parser because only you know whether your `404` means
+"expired" or "never existed". Return `{ outcome: "failed" }` to send one to the
+error screen instead.
 
 ---
 
 ## Theming
 
-Every value the module renders comes from a token in
-`styles/tokens.css`. Override the tokens — not the components:
+Every value comes from a token in `styles/tokens.css`. Override the tokens, not
+the components:
 
 ```css
 [data-vf-theme="mine"] {
   --verification-success: #7c3aed;
   --verification-radius: 0;
-  --verification-font-family-heading: "Inter", sans-serif;
   --verification-space-md: 1.25rem;
+  --verification-font-family-heading: "Inter", sans-serif;
 }
 ```
 
 Colour, type, spacing, radius, shadow, rule thickness and motion are all tokens,
-so a theme changes the whole flow without touching markup.
+so a theme changes the whole flow without touching markup. Put the attribute on
+`<html>` if the chrome around the module needs to retint with it.
 
-One trap worth naming: `--verification-surface-elevated` is what cards, inputs
-and panels sit on, so it must read **lighter** than `--verification-surface`
-(the page). Setting it equal to `--verification-surface-muted` makes every card
-darker than the page and pushes placeholder text and artwork to near-invisible
-contrast. Scope the block to an attribute
-or class if several themes must coexist in one app; use `:root` if there is only
-one.
+**One trap:** `--verification-surface-elevated` is what cards and inputs sit on,
+so it must be **lighter** than `--verification-surface`, the page. Setting it
+equal to `--verification-surface-muted` makes every card look like a hole in the
+page and pushes placeholder text to invisible.
 
-**Build your `renderVerified` from the same tokens and classes.** It sits
-between the module's own entry, loading and error screens; a result card that
-takes its colours from elsewhere looks right alone and wrong in sequence. The
-kit available to you:
+### Class kit
 
-| Class | Use |
+Build `renderVerified` from these so it matches the screens around it.
+
+| Class | For |
 | --- | --- |
 | `vf-screen`, `vf-screen--centered` | Page wrapper |
 | `vf-stack` | Vertical group |
 | `vf-card` | Bordered surface |
-| `vf-title`, `vf-title--large/small` | Headings |
-| `vf-text`, `vf-text--muted`, `vf-caption`, `vf-label` | Body copy |
-| `vf-button`, `--primary/--secondary/--ghost` | Actions |
-| `vf-input`, `vf-input--invalid`, `vf-error-text` | Forms |
-| `vf-metric-grid`, `vf-metric-card`, `vf-metric-card--wide` | Stat tiles |
+| `vf-title`, `--large`, `--small` | Headings |
+| `vf-text`, `--muted`, `vf-caption`, `vf-label` | Copy |
+| `vf-button`, `--primary`, `--secondary`, `--quiet` | Actions |
+| `vf-input`, `--invalid`, `vf-error-text` | Forms |
+| `vf-metric-grid`, `vf-metric-card`, `--wide` | Stat tiles |
 | `vf-list`, `vf-detail-row` | Divided label/value list |
-| `vf-preview`, `vf-preview__mark`, `vf-preview__caption` | A stand-in for the asset itself |
-| `vf-hero` | Centred crest for certificate-style results |
+| `vf-preview` | A stand-in for the asset itself |
+| `vf-hero` | Centred crest |
 | `vf-section-label` | Heading above a list or grid |
-| `vf-appbar`, `vf-page` | Optional app bar and mobile frame |
-| `vf-status-icon--success/danger/info` | Result icons |
+| `vf-appbar`, `vf-footer`, `vf-page` | Optional chrome |
 
-Use `vf-button--primary` for the action that moves the user forward, and
-`vf-button--quiet` for a loop-back like "Verify another" — it takes the page
-background so it reads as optional rather than as the next step.
+`--primary` for the action that moves the user forward, `--quiet` for a
+loop-back like "Verify another" — it takes no background of its own, so it reads
+as optional.
 
 ### Two-tone results
 
-A project serving more than one asset type can retint a whole screen by
-rebinding the accent the module's own classes already read:
+Serving more than one asset type? Retint a whole screen by rebinding the accent
+its classes already read:
 
 ```tsx
 <div className="vf-screen" style={{
   "--verification-success": "var(--verification-accent-b)",
-  "--verification-success-strong": "var(--verification-accent-b-strong)",
 } as CSSProperties}>
 ```
 
-Cards, buttons and icons below follow automatically. The base tokens point both
-accents at the primary, so a single-tone theme needs no change.
+Cards, buttons and icons below follow. Single-tone themes need no change — both
+accents point at the primary by default.
+
+---
+
+## The scan button
+
+`TokenEntryView` checks camera permission *without prompting*, so its button says
+what it will actually do:
+
+| Permission | Label | Click |
+| --- | --- | --- |
+| Granted | Begin scan | Opens the scanner |
+| Not asked yet | Request camera permission | Asks, then opens the scanner if allowed |
+| Blocked | Camera blocked | Points at the code field |
+
+`QRScanner` prompts on mount instead — a user who opened the scan screen has
+already committed.
 
 ---
 
 ## Exports
 
-| Export | What it is |
+| Export | Is |
 | --- | --- |
 | `VerificationProvider` | Provider. Takes `config`, holds the state |
 | `useVerification` | Reads `{ state, dispatch, config }` |
@@ -281,17 +255,15 @@ accents at the primary, so a single-tone theme needs no change.
 | `QRScanner` | Camera, permission handling, manual fallback |
 | `LoadingPulse`, `NetworkErrorView`, `InvalidResultView` | Individual screens |
 | `useCameraPermission`, `useQrScanner`, `ScannerViewfinder`, `ManualTokenFallback`, `ScannerPresets` | Scanner parts, for a custom scan screen |
-| `verifyToken` | Verifies a token without React |
+| `verifyToken` | Verifies without React — server component, route handler, test |
 | `verificationReducer`, `createInitialState` | The state machine, for tests |
-| `DEFAULT_MESSAGES`, `resolveMessages` | Built-in copy |
+| `DEFAULT_MESSAGES`, `resolveMessages` | The built-in copy |
 
-### Verifying outside React
+### Without React
 
 ```ts
 const outcome = await verifyToken(token, config);
-if (outcome.outcome === "verified") {
-  // outcome.result
-}
+if (outcome.outcome === "verified") { /* outcome.result */ }
 ```
 
 ### Testing a config
@@ -301,14 +273,14 @@ The machine is pure, so a config can be checked without rendering:
 ```ts
 let state = createInitialState<Certificate, Rejection>();
 state = verificationReducer(state, { type: "tokenReceived", token: "CERT-2001" });
-assert.equal(state.status, "verifying");
+// state.status === "verifying"
 ```
 
 ---
 
 ## Not included
 
-- **Route definitions.** The module asks to navigate; you own the URLs.
+- **Routes.** The module asks to navigate; you own the URLs.
 - **A camera polyfill.** `QRScanner` needs `html5-qrcode` and a secure context
   (`https://` or `localhost`).
 - **Persistence.** Nothing is cached or stored between page loads.
