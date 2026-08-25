@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, type ReactElement } from "react";
+import { useRouter } from "next/navigation";
 import { useVerification } from "../state/useVerification";
 import { useCameraPermission } from "./useCameraPermission";
 import { useQrScanner } from "./useQrScanner";
@@ -25,24 +26,27 @@ export interface QRScannerProps {
 /**
  * The scan screen. Requests the camera, runs the decoder, and falls back to
  * keyboard entry when the camera is unavailable.
- *
- * Composition only — permission lives in `useCameraPermission`, the decoder in
- * `useQrScanner`, and each screen in its own component.
  */
 export function QRScanner({
   onScanSuccess,
   onInvalidToken,
   presets = [],
 }: QRScannerProps): ReactElement {
+  const router = useRouter();
   const { config } = useVerification();
   const { permission } = useCameraPermission({ requestOnMount: true });
 
   const acceptToken = useCallback(
     (token: string) => {
-      if (onScanSuccess) onScanSuccess(token);
-      else config.onNavigate({ name: "verify", token });
+      if (onScanSuccess) {
+        onScanSuccess(token);
+      } else if (config.onNavigate) {
+        config.onNavigate({ name: "verify", token });
+      } else {
+        router.push(`/verify/${encodeURIComponent(token)}`);
+      }
     },
-    [onScanSuccess, config]
+    [onScanSuccess, config, router]
   );
 
   const handleDecode = useCallback(

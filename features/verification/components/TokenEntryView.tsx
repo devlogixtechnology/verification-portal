@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent, type ReactElement } from "react";
+import { useRouter } from "next/navigation";
 import { useVerification } from "../state/useVerification";
 import { useCameraPermission } from "../scanner/useCameraPermission";
 import { resolveMessages } from "../api/errors";
@@ -9,10 +10,6 @@ export interface TokenEntryViewProps {
   title?: string;
   subtitle?: string;
   inputLabel?: string;
-  /**
-   * Placeholder for the code field. Keep it generic — a placeholder that spells
-   * out the token format hands an attacker the shape to guess against.
-   */
   inputPlaceholder?: string;
   submitLabel?: string;
 }
@@ -25,16 +22,6 @@ const SCAN_LABELS: Record<string, string> = {
   unsupported: "Camera unavailable",
 };
 
-/**
- * The entry screen: scan a code, or type one in.
- *
- * Both paths end in `config.onNavigate({ name: "verify", token })`, so a scan
- * and a deep link arrive at exactly the same place.
- *
- * The scan button reflects what the browser will actually do. If access has
- * already been granted it reads "Begin scan" and goes straight to the scanner.
- * If not, it asks first, and opens the scanner only once access is given.
- */
 export function TokenEntryView({
   title = "Verify your asset",
   subtitle = "Scan the QR code provided on the asset you wish to verify.",
@@ -42,6 +29,7 @@ export function TokenEntryView({
   inputPlaceholder = "Code",
   submitLabel = "Verify",
 }: TokenEntryViewProps): ReactElement {
+  const router = useRouter();
   const { config } = useVerification();
   const { permission, request } = useCameraPermission();
 
@@ -59,12 +47,17 @@ export function TokenEntryView({
     }
 
     setError(null);
-    config.onNavigate({ name: "verify", token });
+    if (config.onNavigate) {
+      config.onNavigate({ name: "verify", token });
+    } else {
+      router.push(`/verify/${encodeURIComponent(token)}`);
+    }
   };
 
   const handleScanClick = async () => {
     if (permission === "granted") {
-      config.onNavigate({ name: "scanner" });
+      if (config.onNavigate) config.onNavigate({ name: "scanner" });
+      else router.push("/verify/scan");
       return;
     }
 
@@ -74,8 +67,12 @@ export function TokenEntryView({
     }
 
     const granted = await request();
-    if (granted) config.onNavigate({ name: "scanner" });
-    else setCameraNotice("Camera permission was declined. Enter your code below instead.");
+    if (granted) {
+      if (config.onNavigate) config.onNavigate({ name: "scanner" });
+      else router.push("/verify/scan");
+    } else {
+      setCameraNotice("Camera permission was declined. Enter your code below instead.");
+    }
   };
 
   const scanDisabled = permission === "checking";
@@ -94,7 +91,6 @@ export function TokenEntryView({
           fill="currentColor"
           aria-hidden="true"
         >
-          {/* Finder squares */}
           {[
             [4, 4],
             [70, 4],
@@ -105,7 +101,6 @@ export function TokenEntryView({
               <rect x={x + 8} y={y + 8} width="10" height="10" rx="2" />
             </g>
           ))}
-          {/* Data modules */}
           {[
             [38, 6], [50, 6], [62, 6], [44, 16], [56, 16], [38, 26], [62, 26],
             [6, 38], [18, 38], [30, 38], [44, 38], [56, 38], [70, 38], [88, 38],

@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node scripts/run-tests.mjs"
+    "test": "node scripts/run-tests.mjs",
+    "backend:dev": "cd backend/core-backend && npm run dev",
+    "backend:start": "cd backend/core-backend && npm start",
+    "backend:test": "cd backend/core-backend && npm test"
   },
   "dependencies": {
     "html5-qrcode": "^2.3.8",

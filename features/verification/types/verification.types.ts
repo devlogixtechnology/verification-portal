@@ -8,13 +8,53 @@ export type VerificationStatus =
   | "invalid"
   | "error";
 
+/** Detailed Issuer representation */
+export interface VerificationIssuer {
+  name: string;
+  designation?: string;
+  logoUrl?: string | null;
+  verifiedBadge?: boolean;
+  website?: string;
+}
+
+/** Recipient information */
+export interface VerificationRecipient {
+  name: string;
+  email?: string;
+  identifier?: string;
+}
+
+/** Normalized Verified Document Domain Model */
+export interface VerifiedDocument {
+  id: string;
+  documentType: string;
+  title: string;
+  referenceNumber: string;
+  issuanceDate: string;
+  expirationDate?: string;
+  status: "active" | "expired" | "revoked";
+  issuer?: VerificationIssuer;
+  recipient?: VerificationRecipient;
+  additionalData?: Record<string, unknown>;
+  verifiedAt?: string;
+  blockchainTxHash?: string;
+}
+
+/** Error details returned on invalid or rejected verifications */
+export interface VerificationErrorDetail {
+  reason?: "expired" | "revoked" | "not_found" | "invalid" | "server_error" | "unknown";
+  code?: string;
+  details?: string;
+  fields?: Array<{ field: string; message: string }>;
+}
+
 /**
  * The complete state of a verification.
  *
  * @typeParam TAsset - Shape of a verified asset, defined by the consuming project.
  * @typeParam TErrorDetail - Shape of the structured detail attached to a rejection.
  */
-export interface VerificationState<TAsset = unknown, TErrorDetail = unknown> {
+export interface VerificationState<TAsset = VerifiedDocument, TErrorDetail = VerificationErrorDetail> {
   /** Drives which screen is shown. */
   status: VerificationStatus;
   /** The token currently being verified, or the one that was. */
@@ -37,34 +77,20 @@ export interface RequestOptions {
   headers?: Record<string, string>;
   /** Serialised as JSON. Omit for requests without a body. */
   body?: unknown;
-  /**
-   * Marks the request as safe to send twice, which enables the single automatic
-   * retry after a connection failure.
-   *
-   * `GET` is assumed idempotent. Set this on a `POST` that only reads — a
-   * verification lookup, for instance — so a dropped connection is retried
-   * instead of surfacing as an error the user has to clear by hand.
-   */
+  /** Marks the request as safe to send twice. */
   idempotent?: boolean;
 }
 
 /**
  * What a response means, as decided by the consuming project.
- *
- * - `verified` - the asset is genuine.
- * - `rejected` - the backend answered, and the answer is no (expired, revoked, unknown).
- * - `failed` - the answer could not be obtained (network, timeout, server fault).
  */
-export type ParsedVerificationResult<TAsset = unknown, TErrorDetail = unknown> =
+export type ParsedVerificationResult<TAsset = VerifiedDocument, TErrorDetail = VerificationErrorDetail> =
   | { outcome: "verified"; result: TAsset }
   | { outcome: "rejected"; message: string; detail?: TErrorDetail }
   | { outcome: "failed"; message: string };
 
 /**
  * Where a screen wants to go, expressed as intent rather than as a URL.
- *
- * The module never knows the consuming project's route structure; the project
- * maps these to its own paths in `onNavigate`.
  */
 export type VerificationRoute =
   | { name: "start" }
@@ -73,9 +99,7 @@ export type VerificationRoute =
 
 /** What a result screen can do besides display itself. */
 export interface VerificationActions {
-  /** Clears the result and returns the user to the entry screen. */
   verifyAnother: () => void;
-  /** Verifies the same token again. */
   retry: () => void;
 }
 
@@ -89,49 +113,23 @@ export interface VerificationMessages {
 }
 
 /**
- * Everything a project must supply to adapt this feature to its own backend,
- * routing, and visual language. Optional fields fall back to the defaults noted.
+ * Configuration contract for the verification module.
  */
-export interface VerificationConfig<TAsset = unknown, TErrorDetail = unknown> {
-  /** Origin and any path prefix, without a trailing slash. */
+export interface VerificationConfig<TAsset = VerifiedDocument, TErrorDetail = VerificationErrorDetail> {
   apiBaseUrl: string;
-
-  /** Rejects a token before any request is made. Default: every non-empty token is accepted. */
   isValidTokenFormat?: (token: string) => boolean;
-
-  /**
-   * Extracts a token from raw input, such as a scanned QR payload or a pasted
-   * URL. Return `null` if no token can be found. Default: the input is the token.
-   */
   parseToken?: (raw: string) => string | null;
-
-  /** Describes the verification request. Default: `GET {apiBaseUrl}/verify/{token}`. */
   buildVerificationRequest?: (token: string) => RequestOptions;
-
-  /** Decides whether a response carries a usable body. Default: `response.ok`. */
   isHealthyResponse?: (response: Response) => boolean;
-
-  /**
-   * Turns a response body into an outcome. Called for healthy responses and for
-   * 4xx responses, which usually carry the reason a token was rejected.
-   */
   parseVerificationResponse: (
     rawBody: unknown
   ) => ParsedVerificationResult<TAsset, TErrorDetail>;
-
-  /** Sends the user somewhere. The project maps each route to its own URL. */
-  onNavigate: (route: VerificationRoute) => void;
-
-  /** Renders the verified asset. Style it with the shared CSS tokens. */
-  renderVerified: (asset: TAsset, actions: VerificationActions) => ReactNode;
-
-  /** Renders a rejection. When omitted, the module's default screen is used. */
+  onNavigate?: (route: VerificationRoute) => void;
+  renderVerified?: (asset: TAsset, actions: VerificationActions) => ReactNode;
   renderInvalid?: (
     message: string,
     detail: TErrorDetail | undefined,
     actions: VerificationActions
   ) => ReactNode;
-
-  /** Overrides any of the module's built-in copy. */
   messages?: Partial<VerificationMessages>;
 }

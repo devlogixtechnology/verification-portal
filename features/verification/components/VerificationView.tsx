@@ -17,15 +17,6 @@ export interface VerificationViewProps {
 /**
  * The whole result flow in one component: submit the token, then show the
  * screen its outcome calls for.
- *
- * This is the seam between the module and the project. The verified screen
- * comes from `config.renderVerified`, and the rejected screen from
- * `config.renderInvalid` when supplied. A consuming project's deep-link page is
- * then a single line:
- *
- * ```tsx
- * <VerificationView token={token} />
- * ```
  */
 export function VerificationView({
   token,
@@ -40,7 +31,7 @@ export function VerificationView({
 
   const verifyAnother = useCallback(() => {
     reset();
-    config.onNavigate({ name: "start" });
+    config.onNavigate?.({ name: "start" });
   }, [reset, config]);
 
   const actions = useMemo(
@@ -54,12 +45,16 @@ export function VerificationView({
       return <LoadingPulse label={loadingLabel ?? `Verifying ${token}...`} />;
 
     case "verified":
-      return <>{config.renderVerified(state.result, actions)}</>;
+      return config.renderVerified ? (
+        <>{config.renderVerified(state.result, actions)}</>
+      ) : null;
 
     case "invalid": {
       const message = state.errorMessage ?? "";
       if (config.renderInvalid) {
-        return <>{config.renderInvalid(message, state.errorDetail ?? undefined, actions)}</>;
+        return (
+          <>{config.renderInvalid(message, state.errorDetail ?? undefined, actions)}</>
+        );
       }
       return <InvalidResultView message={message} onVerifyAnother={verifyAnother} />;
     }

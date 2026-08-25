@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Compiled test output.
     ".test-build/**",
+    // Backend CommonJS Express service (linted via backend's own linter)
+    "backend/**",
     // Plain CommonJS Node services, linted by their own runtime rules.
     "mock-backend/**",
     // Scratch area for specs and source material, not part of the build.
