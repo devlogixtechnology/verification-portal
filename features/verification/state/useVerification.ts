@@ -15,12 +15,14 @@ import type { VerificationContextValue } from "./VerificationProvider";
  *
  * @throws If called outside a `VerificationProvider`.
  */
-function useVerification<TAsset, TErrorDetail>() {
-  const context = useContext(VerificationContext) as VerificationContextValue<TAsset, TErrorDetail> | undefined;
+export function useVerification<TAsset = unknown, TErrorDetail = unknown>() {
+  const context = useContext(VerificationContext) as
+    | VerificationContextValue<TAsset, TErrorDetail>
+    | undefined;
+
   if (!context) {
     throw new Error("useVerification must be used within a VerificationProvider");
   }
+
   return context;
 }
-
-export { useVerification };

@@ -1,35 +1,23 @@
-import type { Metadata } from "next";
-import React, { type ReactNode } from "react";
+"use client";
+
+import { useMemo, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { VerificationProvider } from "@/features/verification";
+import { createProductionConfig } from "@/lib/config/verification.config";
 
-export const metadata: Metadata = {
-  title: "Verify Asset Authenticity",
-  description:
-    "Scan a QR code or enter your DevLogix reference number to instantly verify document authenticity, issuer details, and cryptographic proof.",
-  alternates: {
-    canonical: "https://verify.devlogix.online/verify",
-  },
-  openGraph: {
-    title: "Verify Asset Authenticity | DevLogix Portal",
-    description:
-      "Instant cryptographic credential and document verification engine.",
-    url: "https://verify.devlogix.online/verify",
-    siteName: "DevLogix Verification Portal",
-    images: [
-      {
-        url: "/devlogix-logo.svg",
-        width: 1023,
-        height: 221,
-        alt: "DevLogix Verification Portal",
-      },
-    ],
-  },
-};
-
+/**
+ * The production verification flow.
+ *
+ * No theme override: this uses the module's base token contract. Add a
+ * `tokens.css` and a `data-vf-theme` wrapper here if the service gets its own
+ * visual identity.
+ */
 export default function VerifyLayout({ children }: { children: ReactNode }) {
-  return (
-    <VerificationProvider>
-      {children}
-    </VerificationProvider>
+  const router = useRouter();
+  const config = useMemo(
+    () => createProductionConfig((path) => router.push(path)),
+    [router]
   );
+
+  return <VerificationProvider config={config}>{children}</VerificationProvider>;
 }

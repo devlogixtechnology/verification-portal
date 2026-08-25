@@ -1,53 +1,60 @@
 /**
- * Public API of the Verification Feature Module.
+ * Public API of the verification feature. See ./README.md for setup.
+ *
+ * Anything not exported here is internal and may change.
+ *
+ * No "use client" directive: each module carries its own, so a server component
+ * can import the types or `verifyToken` from here without the whole feature
+ * becoming a client boundary.
  */
 
-// State Machine & React Context
-export {
-  VerificationProvider,
-  VerificationContext,
-  useVerification,
-  verificationReducer,
-  createInitialState,
-  type VerificationContextValue,
-  type VerificationProviderProps,
-  type VerificationAction,
-} from "./state";
+// Mount this around the verification routes.
+export { VerificationProvider } from "./state/VerificationProvider";
+export { useVerification } from "./state/useVerification";
+export { useSubmitToken } from "./hooks/useSubmitToken";
 
-// Custom Hooks
-export { useSubmitToken, DEFAULT_INVALID_TOKEN_MESSAGE } from "./hooks/useSubmitToken";
+// Screens.
+export { VerificationView } from "./components/VerificationView";
+export { TokenEntryView } from "./components/TokenEntryView";
+export { LoadingPulse } from "./components/LoadingPulse";
+export { NetworkErrorView } from "./components/NetworkErrorView";
+export { InvalidResultView } from "./components/InvalidResultView";
+export { QRScanner } from "./scanner/QRScanner";
 
-// Network / API
-export { verifyToken, defaultBuildVerificationRequest, defaultIsHealthyResponse } from "./api/verification";
-export { requestWithRetry, DEFAULT_TIMEOUT_MS } from "./api/client";
-export { classifyNetworkError, classifyResponse, FAILURE_MESSAGES } from "./api/errors";
+// Scanner internals, for projects building their own scan screen.
+export { useCameraPermission } from "./scanner/useCameraPermission";
+export { useQrScanner } from "./scanner/useQrScanner";
+export { ScannerViewfinder } from "./scanner/ScannerViewfinder";
+export { ManualTokenFallback } from "./scanner/ManualTokenFallback";
+export { ScannerPresets } from "./scanner/ScannerPresets";
 
-// Config & Defaults
-export {
-  defaultVerificationConfig,
-  MOCK_VERIFIED_DOCUMENTS,
-  extractTokenFromInput,
-  validateTokenFormat,
-} from "./config/verification.config";
+// The state machine, for testing a config against real transitions.
+export { verificationReducer, createInitialState } from "./state/verificationMachine";
 
-// UI Components
-export { default as QRScanner } from "./scanner/QRScanner";
-export { default as LandingVerificationView } from "./components/LandingVerificationView";
-export { default as LoadingPulse } from "./components/LoadingPulse";
-export { default as NetworkErrorView } from "./components/NetworkErrorView";
-export { default as VerificationDashboard } from "./dashboard/VerificationDashboard";
-export { default as CaPassDashboard } from "./dashboard/CaPassDashboard";
-export { default as CaFailDashboard } from "./dashboard/CaFailDashboard";
+// Verify a token without React, from a server component or a test.
+export { verifyToken } from "./api/verification";
+export { DEFAULT_MESSAGES, resolveMessages } from "./api/errors";
 
-// Types
 export type {
   VerificationConfig,
   VerificationState,
-  VerificationStatus as VerificationStatusType,
+  VerificationStatus,
+  VerificationActions,
+  VerificationRoute,
+  VerificationMessages,
   ParsedVerificationResult,
   RequestOptions,
-  VerificationIssuer,
-  VerificationRecipient,
-  VerifiedDocument,
-  VerificationErrorDetail,
 } from "./types/verification.types";
+
+export type {
+  VerificationContextValue,
+  VerificationProviderProps,
+} from "./state/VerificationProvider";
+
+export type { VerificationViewProps } from "./components/VerificationView";
+export type { TokenEntryViewProps } from "./components/TokenEntryView";
+export type { QRScannerProps } from "./scanner/QRScanner";
+export type { ScannerPreset } from "./scanner/ScannerPresets";
+export type { CameraPermission } from "./scanner/useCameraPermission";
+
+export type { VerificationAction } from "./state/verificationMachine";

@@ -1,12 +1,13 @@
 "use client";
 
-import React from "react";
-import LandingVerificationView from "@/features/verification/components/LandingVerificationView";
+import { TokenEntryView } from "@/features/verification";
 
 export default function VerifyPage() {
   return (
-    <div className="w-full">
-      <LandingVerificationView />
-    </div>
+    <TokenEntryView
+      title="Verify a document"
+      subtitle="Scan the QR code on your document, or enter the code printed with it."
+      inputLabel="Enter the code provided with your document."
+    />
   );
 }

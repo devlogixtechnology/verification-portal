@@ -1,9 +1,9 @@
 import { requestWithRetry } from "./client";
 import {
-  FAILURE_MESSAGES,
   classifyNetworkError,
   classifyResponse,
   failure,
+  resolveMessages,
 } from "./errors";
 import type {
   ParsedVerificationResult,
@@ -12,12 +12,12 @@ import type {
 } from "../types/verification.types";
 
 /** Used when `config.buildVerificationRequest` is omitted. */
-function defaultBuildVerificationRequest(token: string): RequestOptions {
+export function defaultBuildVerificationRequest(token: string): RequestOptions {
   return { path: `/verify/${encodeURIComponent(token)}`, method: "GET" };
 }
 
 /** Used when `config.isHealthyResponse` is omitted. */
-function defaultIsHealthyResponse(response: Response): boolean {
+export function defaultIsHealthyResponse(response: Response): boolean {
   return response.ok;
 }
 
@@ -36,7 +36,7 @@ function defaultIsHealthyResponse(response: Response): boolean {
  * if (outcome.outcome === "verified") console.log(outcome.result);
  * ```
  */
-async function verifyToken<TAsset, TErrorDetail>(
+export async function verifyToken<TAsset, TErrorDetail>(
   token: string,
   config: VerificationConfig<TAsset, TErrorDetail>
 ): Promise<ParsedVerificationResult<TAsset, TErrorDetail>> {
@@ -44,25 +44,28 @@ async function verifyToken<TAsset, TErrorDetail>(
     config.buildVerificationRequest ?? defaultBuildVerificationRequest;
   const isHealthyResponse =
     config.isHealthyResponse ?? defaultIsHealthyResponse;
+  const messages = resolveMessages(config.messages);
 
   let response: Response;
   try {
     response = await requestWithRetry(buildRequest(token), config);
   } catch (error) {
-    return classifyNetworkError(error);
+    return classifyNetworkError(error, messages);
   }
 
-  const environmentalFailure = classifyResponse(response, isHealthyResponse);
+  const environmentalFailure = classifyResponse(
+    response,
+    isHealthyResponse,
+    messages
+  );
   if (environmentalFailure) return environmentalFailure;
 
   let rawBody: unknown;
   try {
     rawBody = await response.json();
   } catch {
-    return failure(FAILURE_MESSAGES.unreadable);
+    return failure(messages.unreadableResponse);
   }
 
   return config.parseVerificationResponse(rawBody);
 }
-
-export { verifyToken, defaultBuildVerificationRequest, defaultIsHealthyResponse };

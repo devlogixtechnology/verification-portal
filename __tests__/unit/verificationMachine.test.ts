@@ -3,152 +3,109 @@ import assert from "node:assert/strict";
 import {
   createInitialState,
   verificationReducer,
-  type VerificationAction,
 } from "../../features/verification/state/verificationMachine";
-import type {
-  VerificationErrorDetail,
-  VerifiedDocument,
-} from "../../features/verification/types/verification.types";
 
-const mockDocument: VerifiedDocument = {
-  id: "doc-001",
-  documentType: "Professional Certification",
-  title: "Client Portal Redesign",
-  referenceNumber: "CERT-2026-001",
-  issuanceDate: "2026-01-15T00:00:00.000Z",
-  status: "active",
-  issuer: { name: "Squad Nova" },
-  recipient: { name: "Client Ops Team" },
-  verifiedAt: "2026-08-25T00:00:00.000Z",
-};
+type Asset = { id: string };
+type Detail = { reason: string };
 
-const mockErrorDetail: VerificationErrorDetail = {
-  reason: "expired",
-  code: "ERR_EXPIRED",
-  details: "Certificate expired",
-};
+const start = () => createInitialState<Asset, Detail>();
 
-describe("verificationReducer (Finite State Machine)", () => {
-  it("initializes in clean idle state", () => {
-    const state = createInitialState<VerifiedDocument, VerificationErrorDetail>();
-    assert.equal(state.status, "idle");
-    assert.equal(state.token, null);
-    assert.equal(state.result, null);
+describe("verificationMachine", () => {
+  it("starts idle with nothing to show", () => {
+    assert.deepEqual(start(), {
+      status: "idle",
+      token: null,
+      result: null,
+      errorMessage: null,
+      errorDetail: null,
+    });
+  });
+
+  it("moves to verifying and keeps the token", () => {
+    const state = verificationReducer(start(), {
+      type: "tokenReceived",
+      token: "TOK-1",
+    });
+    assert.equal(state.status, "verifying");
+    assert.equal(state.token, "TOK-1");
+  });
+
+  it("clears a previous error when a new token arrives", () => {
+    let state = verificationReducer(start(), { type: "tokenReceived", token: "TOK-1" });
+    state = verificationReducer(state, {
+      type: "verificationRejected",
+      message: "Expired",
+      detail: { reason: "expired" },
+    });
+    state = verificationReducer(state, { type: "tokenReceived", token: "TOK-2" });
+
+    assert.equal(state.status, "verifying");
+    assert.equal(state.token, "TOK-2");
     assert.equal(state.errorMessage, null);
     assert.equal(state.errorDetail, null);
+    assert.equal(state.result, null);
   });
 
-  it("transitions from idle to verifying on tokenReceived", () => {
-    const initialState = createInitialState<VerifiedDocument, VerificationErrorDetail>();
-    const action: VerificationAction<VerifiedDocument, VerificationErrorDetail> = {
-      type: "tokenReceived",
-      token: "CERT-2026-001",
-    };
-
-    const nextState = verificationReducer(initialState, action);
-    assert.equal(nextState.status, "verifying");
-    assert.equal(nextState.token, "CERT-2026-001");
-    assert.equal(nextState.result, null);
-    assert.equal(nextState.errorMessage, null);
-  });
-
-  it("transitions from verifying to verified on verificationSucceeded", () => {
-    const verifyingState = {
-      status: "verifying" as const,
-      token: "CERT-2026-001",
-      result: null,
-      errorMessage: null,
-      errorDetail: null,
-    };
-
-    const action: VerificationAction<VerifiedDocument, VerificationErrorDetail> = {
+  it("clears a previous result when a later attempt is rejected", () => {
+    let state = verificationReducer(start(), { type: "tokenReceived", token: "TOK-1" });
+    state = verificationReducer(state, {
       type: "verificationSucceeded",
-      result: mockDocument,
-    };
-
-    const nextState = verificationReducer(verifyingState, action);
-    assert.equal(nextState.status, "verified");
-    assert.deepEqual(nextState.result, mockDocument);
-    assert.equal(nextState.errorMessage, null);
-  });
-
-  it("transitions from verifying to invalid on verificationRejected", () => {
-    const verifyingState = {
-      status: "verifying" as const,
-      token: "CERT-EXPIRED-002",
-      result: null,
-      errorMessage: null,
-      errorDetail: null,
-    };
-
-    const action: VerificationAction<VerifiedDocument, VerificationErrorDetail> = {
+      result: { id: "a" },
+    });
+    state = verificationReducer(state, { type: "retry" });
+    state = verificationReducer(state, {
       type: "verificationRejected",
-      message: "This asset expired at 15/01/2025.",
-      detail: mockErrorDetail,
-    };
+      message: "Revoked",
+      detail: { reason: "revoked" },
+    });
 
-    const nextState = verificationReducer(verifyingState, action);
-    assert.equal(nextState.status, "invalid");
-    assert.equal(nextState.errorMessage, "This asset expired at 15/01/2025.");
-    assert.deepEqual(nextState.errorDetail, mockErrorDetail);
+    assert.equal(state.status, "invalid");
+    assert.equal(state.result, null);
+    assert.equal(state.token, "TOK-1");
+    assert.deepEqual(state.errorDetail, { reason: "revoked" });
   });
 
-  it("transitions from verifying to error on verificationFailed", () => {
-    const verifyingState = {
-      status: "verifying" as const,
-      token: "ERROR-500",
-      result: null,
-      errorMessage: null,
-      errorDetail: null,
-    };
+  it("clears error fields on retry so no stale message shows under the spinner", () => {
+    let state = verificationReducer(start(), { type: "tokenReceived", token: "TOK-1" });
+    state = verificationReducer(state, { type: "verificationFailed", message: "Network" });
+    state = verificationReducer(state, { type: "retry" });
 
-    const action: VerificationAction<VerifiedDocument, VerificationErrorDetail> = {
-      type: "verificationFailed",
-      message: "There was a problem in verifying your asset. Please check your network and try again.",
-    };
-
-    const nextState = verificationReducer(verifyingState, action);
-    assert.equal(nextState.status, "error");
-    assert.equal(nextState.token, "ERROR-500");
-    assert.equal(nextState.errorMessage, "There was a problem in verifying your asset. Please check your network and try again.");
+    assert.equal(state.status, "verifying");
+    assert.equal(state.errorMessage, null);
+    assert.equal(state.token, "TOK-1");
   });
 
-  it("transitions from error back to verifying on retry", () => {
-    const errorState = {
-      status: "error" as const,
-      token: "ERROR-500",
-      result: null,
-      errorMessage: "Network error",
-      errorDetail: null,
-    };
+  it("drops the token when the input never became one", () => {
+    let state = verificationReducer(start(), { type: "tokenReceived", token: "TOK-1" });
+    state = verificationReducer(state, {
+      type: "verificationSucceeded",
+      result: { id: "a" },
+    });
+    state = verificationReducer(state, { type: "tokenRejected", message: "Bad format" });
 
-    const action: VerificationAction<VerifiedDocument, VerificationErrorDetail> = {
-      type: "retry",
-    };
-
-    const nextState = verificationReducer(errorState, action);
-    assert.equal(nextState.status, "verifying");
-    assert.equal(nextState.token, "ERROR-500");
-    assert.equal(nextState.errorMessage, null);
+    assert.equal(state.status, "invalid");
+    assert.equal(state.token, null);
+    assert.equal(state.result, null);
   });
 
-  it("resets back to idle on reset", () => {
-    const verifiedState = {
-      status: "verified" as const,
-      token: "CERT-2026-001",
-      result: mockDocument,
-      errorMessage: null,
-      errorDetail: null,
-    };
+  it("treats retry without a token as a no-op", () => {
+    const idle = start();
+    assert.equal(verificationReducer(idle, { type: "retry" }), idle);
+  });
 
-    const action: VerificationAction<VerifiedDocument, VerificationErrorDetail> = {
-      type: "reset",
-    };
+  it("resets to a pristine state", () => {
+    let state = verificationReducer(start(), { type: "tokenReceived", token: "TOK-1" });
+    state = verificationReducer(state, {
+      type: "verificationSucceeded",
+      result: { id: "a" },
+    });
+    assert.deepEqual(verificationReducer(state, { type: "reset" }), start());
+  });
 
-    const nextState = verificationReducer(verifiedState, action);
-    assert.equal(nextState.status, "idle");
-    assert.equal(nextState.token, null);
-    assert.equal(nextState.result, null);
+  it("never mutates the state it is given", () => {
+    const before = start();
+    const snapshot = JSON.stringify(before);
+    verificationReducer(before, { type: "tokenReceived", token: "TOK-1" });
+    assert.equal(JSON.stringify(before), snapshot);
   });
 });
-

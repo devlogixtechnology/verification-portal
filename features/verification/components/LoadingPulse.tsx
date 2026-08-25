@@ -1,28 +1,21 @@
-import React from "react";
+import type { ReactElement } from "react";
 
 export interface LoadingPulseProps {
   label?: string;
 }
 
-export default function LoadingPulse({
+/** Shown while a verification request is in flight. */
+export function LoadingPulse({
   label = "Verifying asset...",
-}: LoadingPulseProps) {
+}: LoadingPulseProps): ReactElement {
   return (
-    <div
-      role="status"
-      aria-label={label}
-      className="flex min-h-[65vh] flex-col items-center justify-center gap-3 py-12"
-    >
-      {/* Top Small Dot */}
-      <div className="h-4 w-4 rounded-full bg-[var(--brand-teal)]" />
-
-      {/* Center Large Pulsing Dot */}
-      <div className="h-11 w-11 rounded-full bg-[var(--brand-teal)] shadow-md animate-pulse-center" />
-
-      {/* Bottom Small Dot */}
-      <div className="h-4 w-4 rounded-full bg-[var(--brand-teal)]" />
-
-      <span className="sr-only">{label}</span>
+    <div className="vf-pulse" role="status" aria-label={label}>
+      <span className="vf-pulse__dot" />
+      <span className="vf-pulse__dot vf-pulse__dot--main" />
+      <span className="vf-pulse__dot" />
+      <span className="vf-visually-hidden">{label}</span>
     </div>
   );
 }
+
+export default LoadingPulse;

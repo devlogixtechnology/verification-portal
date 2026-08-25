@@ -1,137 +1,94 @@
 # CLAUDE.md
 
-Guidance for Claude (or any AI agent) generating code in this repo. This is Squad Nova's Epic 3 — End-User Verification Portal (Next.js App Router + TypeScript). Read this before creating or placing any file.
+Guidance for Claude, or any agent, writing code in this repo. Read this before
+creating or moving a file.
 
-## Core rule
+This is Squad Nova's Epic 3 — a portable QR / token verification module plus the
+projects that consume it. Next.js App Router, TypeScript.
 
-**Feature-based, not type-based.** Never create a generic top-level `pages/` or dump unrelated components into one folder. Every file about verification belongs under `features/verification/`. Routing files belong under `app/`. Nothing else.
+## The one rule
+
+**`features/verification/` must not know about any specific project.**
+
+Anything that knows a backend, a brand, a URL or a document schema lives outside
+it. A project adapts the module through one config object — never by editing it.
+
+If you find yourself changing a file inside the module to make a project work,
+stop: that is a gap in the config contract, and the fix belongs in
+`features/verification/types/verification.types.ts`, not in a workaround.
 
 ## Where things go
 
-| You're creating...                                                           | Put it in...                                                                                    | Example                                          |
-| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| A route / page                                                               | `app/(public)/verify/...`                                                                     | `app/(public)/verify/scan/page.tsx`            |
-| An internal/authenticated route                                              | `app/(internal)/...`                                                                          | —                                               |
-| A verification-specific component                                            | `features/verification/components/`                                                           | `AssetMetadataCard.tsx`                        |
-| Scanner logic/component                                                      | `features/verification/scanner/`                                                              | `QrScanner.tsx`, `validateQrPayload.ts`      |
-| State machine / provider / feature state                                     | `features/verification/state/`                                                                | `verificationMachine.ts`                       |
-| Verification-only types                                                      | `features/verification/types/`                                                                | `verification.types.ts`                        |
-| Verification-only hooks                                                      | `features/verification/hooks/`                                                                | `useQrPermission.ts`                           |
-| Truly generic, reusable UI (buttons, cards, badges — no verification logic) | `components/ui/`                                                                              | `Badge.tsx`                                    |
-| RTK Query base client (JWT interceptors, shared config)                      | `store/baseApi.ts`                                                                            | — single file, don't split this up              |
-| RTK Query domain slice + endpoints for verification                          | `store/verification/`                                                                         | `verificationApi.ts`, `verificationSlice.ts` |
-| RTK Query domain slice for another domain (e.g. auth)                        | `store/<domain>/`                                                                             | `store/auth/`                                  |
-| Error classification (network/4xx/5xx)                                       | inside the relevant domain folder, or a shared`store/errors.ts` if reused across domains      | —                                               |
-| Env vars, feature flags                                                      | `lib/config/`                                                                                 | —                                               |
-| Route paths, error codes, magic strings                                      | `lib/constants/`                                                                              | —                                               |
-| Cross-feature reusable hook                                                  | `hooks/` (root)                                                                               | `useDebounce.ts`                               |
-| Cross-feature shared type                                                    | `types/` (root)                                                                               | shared API envelope types                        |
-| Mock API responses                                                           | `mocks/`                                                                                      | `verification.mock.ts`                         |
-| Tests                                                                        | mirror the source path under`__tests__/unit`, `__tests__/integration`, or `__tests__/e2e` | see below                                        |
-| Planning docs / decisions                                                    | `docs/`                                                                                       | `routing-state-plan.md`                        |
+| Creating | Put it in | Example |
+| --- | --- | --- |
+| A route | `app/(public)/…` or `app/(demo)/…` | `app/(public)/verify/scan/page.tsx` |
+| An authenticated route | `app/(internal)/…` | `app/(internal)/login/page.tsx` |
+| Something every project needs and none can customise | `features/verification/` | `components/VerificationView.tsx` |
+| A backend's request/response contract | `lib/config/` | `verification.contract.ts` |
+| A project's config object | `lib/config/`, or that project's folder | `verification.config.tsx` |
+| A project's result screen | `components/verification/` | `VerifiedDocumentCard.tsx` |
+| Token parsing, format rules | `lib/config/tokenUtils.ts` | — |
+| Truly generic UI, no verification logic | `components/ui/` | `Badge.tsx` |
+| Cross-feature hook | `hooks/` | `useDebounce.ts` |
+| Cross-feature type | `types/` | shared envelopes |
+| A test | mirror the source path under `__tests__/{unit,integration,e2e}/` | — |
 
-## Decision rule: feature folder vs. shared folder
+Inside the module: `types/` the contract, `state/` the machine and provider,
+`api/` transport and error classification, `hooks/`, `components/` the screens,
+`scanner/` the camera, `styles/` the design tokens.
 
-Ask: **"Would another client project need this exact file unmodified?"**
+**Before adding a top-level folder: don't.** If something doesn't fit above, it
+almost certainly belongs inside an existing folder.
 
-- **No** (it knows about verification, tokens, assets) → `features/verification/...`
-- **Yes** (it's a generic Button, a generic useDebounce, a shared base API client) → root-level shared folder (`components/ui/`, `hooks/`, `store/baseApi.ts`)
+## State
 
-When in doubt, default to the feature folder. It's easier to promote a file to shared later than to untangle a shared file that quietly grew feature-specific logic.
+- One state machine: `features/verification/state/verificationMachine.ts`. No
+  scattered `useState` booleans for loading or error — screens read status from
+  `useVerification()`.
+- Every transition returns the **complete** state. Spreading the previous one is
+  how a stale error survives into a loading screen.
+- React Context + `useReducer`. Redux and RTK Query were evaluated and dropped:
+  the portal holds one short-lived verification at a time, and the module must
+  not force a store on a consuming project.
 
-## Testing conventions
+## API
 
-- Test location mirrors source location, under `__tests__/{unit,integration,e2e}/`.
-- **Unit**: pure functions and isolated logic — `validateQrPayload.ts`, `verificationMachine.ts` transitions.
-- **Integration**: anything touching the API client or store together — `store/verification/verificationApi.ts` against `mocks/`.
-- **E2E**: full user flow — scan/link → loading → verified or error.
-- Every new component that has a loading/success/error state must have a corresponding test covering all three states — this project treats error states as first-class, not an afterthought.
+- **Never** call `fetch` from a component. Everything goes through
+  `features/verification/api/`.
+- **Never** hardcode a secret, token or internal URL in client code. Every route
+  here is publicly reachable.
+- The module classifies network failures, timeouts, `5xx` and unreadable bodies.
+  A `4xx` with a body goes to the project's `parseVerificationResponse` — only
+  the project knows what its own `404` means.
+- Failed `GET`s retry once. A `POST` retries only if marked `idempotent`.
 
-## API & state rules (don't deviate without asking)
+## Styling
 
-- **Never** call `fetch` directly from a component. All backend calls go through `lib/api/verification.ts`.
-- **Never** hardcode a secret, token, or internal URL in client code. Assume every route is publicly reachable.
-- State must flow through the state machine in `features/verification/state/verificationMachine.ts` — no scattered `useState` booleans for loading/error across screens. If a new screen needs status, it reads from this machine.
-- Prefer React Context + `useReducer`, or Zustand only if state must be read from multiple unrelated components. Don't reach for Redux Toolkit/RTK Query for this feature unless the squad has explicitly decided otherwise — see `store/` only if that decision has been made.
+- `features/verification/styles/tokens.css` is the single source of truth for
+  every colour, size and rule width. Everything else reads from it, including
+  the legacy `--brand-*` aliases in `app/globals.css`.
+- The module ships semantic `vf-*` classes and no utility framework, so it drops
+  into a project that doesn't use Tailwind.
+- To restyle, override tokens — never edit the components.
+- `--verification-surface-elevated` must be lighter than `--verification-surface`.
+
+## Security
+
+Never print the token format in a placeholder or an error message. Enforce it in
+`isValidTokenFormat`, which the user never sees.
+
+## Testing
+
+- Mirror the source path under `__tests__/{unit,integration,e2e}/`.
+- **Unit** — pure logic: the reducer's transitions, token rules, response mapping.
+- **Integration** — the request pipeline against stubbed responses.
+- Tests import real source. Never inline a copy of the thing under test.
+- Any component with loading / success / error states needs all three covered.
+  Error states are first-class here, not an afterthought.
 
 ## Naming
 
-- Components: `PascalCase.tsx`
-- Hooks: `useCamelCase.ts`
-- Utilities/logic: `camelCase.ts`
-- Types: `camelCase.types.ts`
-- Route folders (App Router): lowercase, matches URL segment (`scan/`, `[token]/`, `result/`)
-
-## Before creating a new top-level folder
-
-Don't. If something doesn't fit the table above, it likely belongs inside an existing folder — ask first rather than introducing a new top-level directory that fragments the structure documented in `docs/`
+Components `PascalCase.tsx` · hooks `useCamelCase.ts` · logic `camelCase.ts` ·
+types `camelCase.types.ts` · route folders lowercase, matching the URL segment.
 
 @AGENTS.md
-
-# CLAUDE.md
-
-Guidance for Claude (or any AI agent) generating code in this repo. This is Squad Nova's Epic 3 — End-User Verification Portal (Next.js App Router + TypeScript). Read this before creating or placing any file.
-
-## Core rule
-
-**Feature-based, not type-based.** Never create a generic top-level `pages/` or dump unrelated components into one folder. Every file about verification belongs under `features/verification/`. Routing files belong under `app/`. Nothing else.
-
-## Where things go
-
-| You're creating...                                                           | Put it in...                                                                                    | Example                                     |
-| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| A route / page                                                               | `app/(public)/verify/...`                                                                     | `app/(public)/verify/scan/page.tsx`       |
-| An internal/authenticated route                                              | `app/(internal)/...`                                                                          | —                                          |
-| A verification-specific component                                            | `features/verification/components/`                                                           | `AssetMetadataCard.tsx`                   |
-| Scanner logic/component                                                      | `features/verification/scanner/`                                                              | `QrScanner.tsx`, `validateQrPayload.ts` |
-| State machine / provider / feature state                                     | `features/verification/state/`                                                                | `verificationMachine.ts`                  |
-| Verification-only types                                                      | `features/verification/types/`                                                                | `verification.types.ts`                   |
-| Verification-only hooks                                                      | `features/verification/hooks/`                                                                | `useQrPermission.ts`                      |
-| Truly generic, reusable UI (buttons, cards, badges — no verification logic) | `components/ui/`                                                                              | `Badge.tsx`                               |
-| RTK Query API slice                                                          | `store/api/`                                                                                  | `verificationApi.ts`                      |
-| Client-only Redux slice (UI state, not server data)                          | `store/slices/`                                                                               | `uiSlice.ts`                              |
-| Backend fetch/client logic, endpoint calls                                   | `lib/api/`                                                                                    | `verification.ts`, `client.ts`          |
-| Error classification (network/4xx/5xx)                                       | `lib/api/errors.ts`                                                                           | —                                          |
-| Env vars, feature flags                                                      | `lib/config/`                                                                                 | —                                          |
-| Route paths, error codes, magic strings                                      | `lib/constants/`                                                                              | —                                          |
-| Cross-feature reusable hook                                                  | `hooks/` (root)                                                                               | `useDebounce.ts`                          |
-| Cross-feature shared type                                                    | `types/` (root)                                                                               | shared API envelope types                   |
-| Mock API responses                                                           | `mocks/`                                                                                      | `verification.mock.ts`                    |
-| Tests                                                                        | mirror the source path under`__tests__/unit`, `__tests__/integration`, or `__tests__/e2e` | see below                                   |
-| Planning docs / decisions                                                    | `docs/`                                                                                       | `routing-state-plan.md`                   |
-
-## Decision rule: feature folder vs. shared folder
-
-Ask: **"Would another client project need this exact file unmodified?"**
-
-- **No** (it knows about verification, tokens, assets) → `features/verification/...`
-- **Yes** (it's a generic Button, a generic useDebounce, a generic fetch wrapper) → root-level shared folder (`components/ui/`, `hooks/`, `lib/`)
-
-When in doubt, default to the feature folder. It's easier to promote a file to shared later than to untangle a shared file that quietly grew feature-specific logic.
-
-## Testing conventions
-
-- Test location mirrors source location, under `__tests__/{unit,integration,e2e}/`.
-- **Unit**: pure functions and isolated logic — `validateQrPayload.ts`, `verificationMachine.ts` transitions.
-- **Integration**: anything touching the API client or store together — `lib/api/verification.ts` against `mocks/`.
-- **E2E**: full user flow — scan/link → loading → verified or error.
-- Every new component that has a loading/success/error state must have a corresponding test covering all three states — this project treats error states as first-class, not an afterthought.
-
-## API & state rules (don't deviate without asking)
-
-- **Never** call `fetch` directly from a component. All backend calls go through `lib/api/verification.ts`.
-- **Never** hardcode a secret, token, or internal URL in client code. Assume every route is publicly reachable.
-- State must flow through the state machine in `features/verification/state/verificationMachine.ts` — no scattered `useState` booleans for loading/error across screens. If a new screen needs status, it reads from this machine.
-- Prefer React Context + `useReducer`, or Zustand only if state must be read from multiple unrelated components. Don't reach for Redux Toolkit/RTK Query for this feature unless the squad has explicitly decided otherwise — see `store/` only if that decision has been made.
-
-## Naming
-
-- Components: `PascalCase.tsx`
-- Hooks: `useCamelCase.ts`
-- Utilities/logic: `camelCase.ts`
-- Types: `camelCase.types.ts`
-- Route folders (App Router): lowercase, matches URL segment (`scan/`, `[token]/`, `result/`)
-
-## Before creating a new top-level folder
-
-Don't. If something doesn't fit the table above, it likely belongs inside an existing folder — ask first rather than introducing a new top-level directory that fragments the structure documented in `docs/`.

@@ -2,11 +2,8 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { verifyToken } from "../api/verification";
+import { resolveMessages } from "../api/errors";
 import { useVerification } from "../state/useVerification";
-
-/** Shown when input fails `parseToken` or `isValidTokenFormat`. */
-const DEFAULT_INVALID_TOKEN_MESSAGE =
-  "That doesn't look like a valid code. Please check it and try again.";
 
 /**
  * Runs a token through the whole verification flow: parse the raw input, check
@@ -28,7 +25,7 @@ const DEFAULT_INVALID_TOKEN_MESSAGE =
  * - `retry()` - verify the same token again. Does nothing if there is none.
  * - `reset()` - return to `idle` and discard any result.
  */
-function useSubmitToken<TAsset, TErrorDetail>() {
+export function useSubmitToken<TAsset, TErrorDetail>() {
   const { state, dispatch, config } = useVerification<TAsset, TErrorDetail>();
 
   // Ignores a slow response that arrives after a newer request was started.
@@ -65,12 +62,16 @@ function useSubmitToken<TAsset, TErrorDetail>() {
 
   const submitToken = useCallback(
     async (rawToken: string) => {
-      const { parseToken, isValidTokenFormat } = configRef.current;
+      const currentConfig = configRef.current;
+      const { parseToken, isValidTokenFormat } = currentConfig;
       const token = parseToken ? parseToken(rawToken) : rawToken;
 
       if (!token || (isValidTokenFormat && !isValidTokenFormat(token))) {
         latestRequestId.current++;
-        dispatch({ type: "tokenRejected", message: DEFAULT_INVALID_TOKEN_MESSAGE });
+        dispatch({
+          type: "tokenRejected",
+          message: resolveMessages(currentConfig.messages).invalidTokenFormat,
+        });
         return;
       }
 
@@ -93,5 +94,3 @@ function useSubmitToken<TAsset, TErrorDetail>() {
 
   return { submitToken, retry, reset };
 }
-
-export { useSubmitToken, DEFAULT_INVALID_TOKEN_MESSAGE };

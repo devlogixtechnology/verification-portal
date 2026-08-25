@@ -39,8 +39,9 @@ async function performRequest(
 /**
  * Sends a request, retrying once if it never reached the server.
  *
- * Only `GET` is retried; replaying a `POST` after an ambiguous failure could
- * duplicate a write. Anything else rethrows the original error.
+ * Only idempotent requests are retried, since replaying a write after an
+ * ambiguous failure could duplicate it. `GET` qualifies by default; anything
+ * else has to say so through `options.idempotent`.
  */
 async function requestWithRetry(
   options: RequestOptions,
@@ -49,7 +50,8 @@ async function requestWithRetry(
   try {
     return await performRequest(options, config);
   } catch (firstAttemptError) {
-    if ((options.method ?? "GET") !== "GET") throw firstAttemptError;
+    const isIdempotent = options.idempotent ?? (options.method ?? "GET") === "GET";
+    if (!isIdempotent) throw firstAttemptError;
     return await performRequest(options, config);
   }
 }

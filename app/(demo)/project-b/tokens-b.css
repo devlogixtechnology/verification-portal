@@ -1,0 +1,60 @@
+/* Theme override for this project.
+   Loaded AFTER features/verification/styles/tokens.css.
+
+   Note: "surface-elevated" is what cards, inputs and panels sit on, so it must
+   read as LIGHTER than "surface" (the page). The source token file set it equal
+   to "surface-muted", which made every card darker than the page and pushed
+   placeholder text and the QR artwork to near-invisible contrast. */
+
+[data-vf-theme="b"] {
+  /* ---------- Color ---------- */
+  --verification-success: #6D4AFF;          /* violet, replacing teal */
+  --verification-success-strong: #4B2FCC;
+  --verification-danger: #D9822B;           /* amber-orange, replacing pure red */
+  --verification-warning: var(--verification-danger);
+  --verification-info: #6D4AFF;
+  --verification-neutral: #ABABAB;
+
+  --verification-surface: #FAFAFC;
+  --verification-surface-muted: #F2F2F7;
+  --verification-surface-elevated: #FFFFFF;
+
+  --verification-text-primary: #1B1B24;
+  --verification-text-secondary: #5C5C6B;
+
+  --verification-border-subtle: #DCDCE6;
+  --verification-scrim: rgba(20, 15, 40, 0.55);
+
+  /* ---------- Typography (same families/sizes — content system is shared) ---------- */
+  --verification-font-family-heading: 'Unbounded', sans-serif;
+  --verification-font-family-body: 'Albert Sans', sans-serif;
+
+  --verification-title-large: 2.1rem;
+  --verification-title-medium: 1.8rem;
+  --verification-title-small: 1.2rem;
+  --verification-heading-size: var(--verification-title-medium);
+  --verification-heading-weight: 800;
+
+  --verification-body-size: 1.1rem;
+  --verification-body-weight: normal;
+
+  --verification-caption-size: 0.9rem;
+  --verification-weight-bold: 700;
+
+  /* ---------- Layout ---------- */
+  --verification-space-xs: 0.25rem;
+  --verification-space-sm: 0.5rem;
+  --verification-space-md: 1rem;
+  --verification-space-lg: 1.5rem;
+  --verification-space-xl: 2.25rem;
+
+  --verification-radius: 16px;
+  --verification-radius-round: 999px;
+
+  --verification-shadow: 0 24px 60px rgba(20, 15, 40, 0.18);
+  --verification-shadow-sheet: 0 -4px 21px rgba(20, 15, 40, 0.25);
+
+  /* ---------- Motion ---------- */
+  --verification-duration-fast: 160ms;
+  --verification-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
