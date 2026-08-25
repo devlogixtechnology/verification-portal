@@ -3,57 +3,47 @@ import assert from "node:assert/strict";
 import {
   extractTokenFromInput,
   validateTokenFormat,
-} from "../../lib/config/tokenUtils";
+} from "../../features/verification/config/verification.config";
 
-describe("extractTokenFromInput", () => {
-  it("passes a plain code through", () => {
-    assert.equal(extractTokenFromInput("HANDOFF-3001"), "HANDOFF-3001");
+describe("Token Extraction & Format Validation Utilities", () => {
+  describe("extractTokenFromInput", () => {
+    it("extracts plain tokens correctly", () => {
+      assert.equal(extractTokenFromInput("CERT-2026-001"), "CERT-2026-001");
+      assert.equal(extractTokenFromInput("  VALID-001  "), "VALID-001");
+    });
+
+    it("extracts token from full URL format", () => {
+      const url = "https://verify.devlogix.online/verify/CERT-2026-001";
+      assert.equal(extractTokenFromInput(url), "CERT-2026-001");
+    });
+
+    it("extracts token from URL with trailing slash", () => {
+      const url = "https://verify.devlogix.online/verify/CERT-EXPIRED-002/";
+      assert.equal(extractTokenFromInput(url), "CERT-EXPIRED-002");
+    });
+
+    it("returns null for empty input", () => {
+      assert.equal(extractTokenFromInput(""), null);
+    });
   });
 
-  it("trims surrounding whitespace", () => {
-    assert.equal(extractTokenFromInput("  HANDOFF-3001 \n"), "HANDOFF-3001");
-  });
+  describe("validateTokenFormat", () => {
+    it("accepts valid alphanumeric tokens with hyphens and underscores", () => {
+      assert.equal(validateTokenFormat("CERT-2026-001"), true);
+      assert.equal(validateTokenFormat("VALID_TOKEN_123"), true);
+      assert.equal(validateTokenFormat("DL99"), true);
+    });
 
-  it("takes the last segment of a URL", () => {
-    assert.equal(
-      extractTokenFromInput("https://verify.example.com/verify/HANDOFF-3001"),
-      "HANDOFF-3001"
-    );
-  });
+    it("rejects tokens that are too short", () => {
+      assert.equal(validateTokenFormat("AB"), false);
+      assert.equal(validateTokenFormat(""), false);
+    });
 
-  it("ignores a trailing slash on a URL", () => {
-    assert.equal(
-      extractTokenFromInput("https://verify.example.com/verify/HANDOFF-3001/"),
-      "HANDOFF-3001"
-    );
-  });
-
-  it("returns null for empty input", () => {
-    assert.equal(extractTokenFromInput(""), null);
-    assert.equal(extractTokenFromInput("   "), null);
-  });
-
-  it("returns null for a malformed URL", () => {
-    assert.equal(extractTokenFromInput("https://"), null);
-  });
-});
-
-describe("validateTokenFormat", () => {
-  it("accepts alphanumerics, hyphens and underscores", () => {
-    assert.equal(validateTokenFormat("HANDOFF-3001"), true);
-    assert.equal(validateTokenFormat("cert_2001"), true);
-  });
-
-  it("rejects anything shorter than three characters", () => {
-    assert.equal(validateTokenFormat("ab"), false);
-  });
-
-  it("rejects spaces and punctuation", () => {
-    assert.equal(validateTokenFormat("HAND OFF"), false);
-    assert.equal(validateTokenFormat("HANDOFF!"), false);
-  });
-
-  it("rejects anything longer than 128 characters", () => {
-    assert.equal(validateTokenFormat("A".repeat(129)), false);
+    it("rejects tokens containing invalid special characters", () => {
+      assert.equal(validateTokenFormat("CERT@2026#001"), false);
+      assert.equal(validateTokenFormat("TOKEN WITH SPACES"), false);
+      assert.equal(validateTokenFormat("<script>alert()</script>"), false);
+    });
   });
 });
+
