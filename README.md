@@ -1,69 +1,121 @@
-
 # End-User Verification Portal (Epic 3)
 
-A foundational, modular digital asset verification engine built with **Next.js App Router**, **TypeScript**, and **Redux Toolkit (RTK) Query**. This portal provides the client-facing surface for scanning QR codes and securely verifying cryptographically issued certificates, documents, and project handoffs against the backend endpoints.
+A portable QR / token asset verification module, plus three demo projects that
+prove it travels.
 
-## Architecture Overview
+The point of this repository: **`features/verification/` adapts to a new
+consuming project through configuration alone.** Three projects here use it
+against three independent backends, four different asset shapes, four different
+result layouts and three different themes — and none of them edit a file inside
+the module.
 
-This repository follows a decoupled feature design pattern to maximize code portability. The codebase is split into three functional layers:
-
-1. **Routing Gateway (`app/`)** — Next.js file-system paths handling entry points, loading skeletons, and runtime error boundaries natively.
-2. **Global State & Network Cache (`store/`)** — Powered by RTK Query. Centralized `baseApi` with interceptors for token headers, extended by modular domain API endpoints.
-3. **UI Modules Layer (`features/`)** — Strictly stateless presentational components and local interaction hooks. No configuration, data logic, or caching code lives here.
+There is deliberately no DevLogix-branded portal here. We do not have their API
+or their document model, so there is nothing to build one against; every project
+in this repo runs on a mock backend and is presented as such.
 
 ---
 
-## Directory Structure Summary
+## Run it
+
+Two terminals.
 
 ```bash
-├── app/                  # Next.js App Router (public verification views)
-│   └── (public)/verify/  # /verify, /verify/scan, and deep-linked /verify/[token]
-├── store/                # RTK Query state engine layer
-│   ├── baseApi.ts        # Central fetch engine configured with JWT interceptors
-│   ├── auth/              # Session state slices and authentication endpoint queries
-│   └── verification/      # Local screen state parameters and asset validation queries
-├── features/             # Plug-and-play UI building blocks
-│   └── verification/      # Isolated verification module components and hardware hooks
-└── docs/                 # System engineering specifications and diagrams
+# 1. the three mock backends (ports 4001, 4002, 4003)
+cd mock-backend
+npm install
+npm start
+
+# 2. the portal
+npm install
+npm run dev
 ```
 
----
+Then open <http://localhost:3000> for an index of all four projects.
 
-## Core Technical Workflows
+| Route | Backend | Asset shape | Result layout | Try |
+| --- | --- | --- | --- | --- |
+| `/project-a` | `:4001` | legal document | preview + divided list | `DOC-1001`, `DOC-1002` |
+| `/project-b` | `:4002` | certificate | crest hero + metric grid | `CERT-2001`, `CERT-2002` |
+| `/project-c` | `:4003` | handoff **and** contract | grid, or preview + grid + list | `HANDOFF-3001`, `CONTRACT-4001` |
 
-### 1. Data Fetching and Caching via RTK Query
-
-All communication with the backend squad (`MERN-BE-A`) goes through the `store/baseApi.ts` query client.
-
-- To fetch verification statistics or validate hashes, use the auto-generated hooks from `store/verification/verificationApi.ts`.
-- Do not invoke `fetch` or `axios` directly within custom hooks or UI components.
-
-### 2. State Machine UI Management
-
-Screen state uses a deterministic state machine rather than scattered boolean flags. The view always resolves to one of the following states:
-
-`idle` → `scanning` → `verifying` → `verified` | `invalid` | `error`
+Failure paths work on every port: `SERVER-ERROR-TEST`, `MALFORMED-TEST`,
+`TIMEOUT-TEST`, and any unrecognised code.
 
 ---
 
-## Onboarding for Contributors
+## Layout
 
-### Development Environment Setup
+```
+features/verification/     the portable module — knows nothing about this app
+├── types/                 the config contract
+├── state/                 pure reducer, provider, hook
+├── api/                   transport, error classification, verifyToken
+├── hooks/                 useSubmitToken
+├── components/            entry, loading, failure, and the render seam
+├── scanner/               camera permission, decoder, viewfinder, fallback
+└── styles/                token contract + the stylesheet that reads it
 
-1. Clone the repository using an authenticated SSH key:
-   ```bash
-   git clone git@github.com:devlogixtechnology/verification-portal.git
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
+lib/api/                   the mock backends' response envelope
+lib/config/                token parsing and format rules
+app/(demo)/project-{a,b,c} the three consumers, one folder each
+app/page.tsx               demo index (delete for a real deployment)
+mock-backend/              three fake backends, one per port
+```
 
-### Code Submission Standards
+**The rule:** anything that knows about a specific backend, brand, or URL lives
+outside `features/verification/`.
 
-- **Type safety** — All API requests, responses, and component props must be explicitly typed using TypeScript interfaces defined in `store/verification/types.ts`.
-- **Graceful degradation** — Camera permission denials, malformed QR inputs, and expired network queries must be handled cleanly using Next.js `error.tsx` boundaries or manual fallbacks.
+---
+
+## What a new project has to write
+
+Everything a fourth project needs is in one folder — see
+`app/(demo)/project-a/` for the smallest complete example:
+
+- a `config.tsx` — backend URL, response parser, navigation, `renderVerified`
+- a `tokens-x.css` — its theme
+- a `layout.tsx` that mounts `VerificationProvider`
+- three one-line pages: `TokenEntryView`, `QRScanner`, `VerificationView`
+
+No changes inside `features/verification/`. That is the acceptance test.
+
+---
+
+## Stripping the demo
+
+A real deployment has one consuming project, not four. To get there:
+
+1. Delete `app/page.tsx` — the index exists only to list the demos.
+2. Delete `app/(demo)/` and `mock-backend/`.
+3. Keep one project folder, move it to your real route (e.g. `app/(public)/verify/`),
+   and point its `apiBaseUrl` at the real backend.
+4. Adjust that project's `onNavigate` to the new paths, and rewrite
+   `parseVerificationResponse` for the real response envelope.
+
+Nothing else changes. `features/verification/`, `lib/`, and the styles are
+untouched by all four steps.
+
+---
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Development server |
+| `npm run build` | Production build (typechecks) |
+| `npm test` | Compiles the test graph and runs it against real source |
+| `npm run lint` | ESLint |
+
+Tests cover the state machine's transitions, the token rules, and the full
+`verifyToken` pipeline against stubbed responses — including 4xx delegation,
+5xx classification, unparseable bodies, lost connections, and message overrides.
+
+---
+
+## Docs
+
+- `features/verification/README.md` — the module's contract. Read this first if
+  you are adopting it.
+- `docs/ARCHITECTURE_STATE.md` — routes and the state machine.
+- `docs/FolderStructureSetup.md` — where files go and why.
+- `mock-backend/README.md` — every token and what it returns.

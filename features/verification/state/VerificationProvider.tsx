@@ -16,7 +16,6 @@ import type {
   VerificationConfig,
   VerificationState,
 } from "../types/verification.types";
-import { defaultVerificationConfig } from "../config/verification.config";
 
 /** What `useVerification` returns. */
 export type VerificationContextValue<TAsset = unknown, TErrorDetail = unknown> = {
@@ -25,22 +24,34 @@ export type VerificationContextValue<TAsset = unknown, TErrorDetail = unknown> =
   config: VerificationConfig<TAsset, TErrorDetail>;
 };
 
-// Context holds generic verification state; useVerification re-types for callers
-export const VerificationContext = createContext<
-  VerificationContextValue<unknown, unknown> | undefined
->(undefined);
+// React context cannot itself be generic; consumers re-apply their own type
+// arguments through useVerification.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const VerificationContext = createContext<VerificationContextValue<any, any> | undefined>(
+  undefined
+);
 
 export type VerificationProviderProps<TAsset, TErrorDetail> = {
-  /** Optional override for verification configuration. Defaults to defaultVerificationConfig. */
-  config?: VerificationConfig<TAsset, TErrorDetail>;
+  /** The project's backend, routing, and rendering adapter. */
+  config: VerificationConfig<TAsset, TErrorDetail>;
   children: ReactNode;
 };
 
 /**
- * Top-level React Provider for the verification state machine.
+ * Owns the verification state and shares it, along with the config, with every
+ * screen below it. Wrap the verification routes in one of these.
+ *
+ * `TAsset` and `TErrorDetail` are inferred from `config`, so screens below get
+ * a fully typed `state.result` without naming them again.
+ *
+ * ```tsx
+ * <VerificationProvider config={verificationConfig}>
+ *   {children}
+ * </VerificationProvider>
+ * ```
  */
 export function VerificationProvider<TAsset, TErrorDetail>({
-  config = defaultVerificationConfig as unknown as VerificationConfig<TAsset, TErrorDetail>,
+  config,
   children,
 }: VerificationProviderProps<TAsset, TErrorDetail>) {
   const [state, dispatch] = useReducer(
@@ -49,14 +60,7 @@ export function VerificationProvider<TAsset, TErrorDetail>({
     () => createInitialState<TAsset, TErrorDetail>()
   );
 
-  const value = useMemo(
-    () => ({
-      state,
-      dispatch: dispatch as Dispatch<VerificationAction<unknown, unknown>>,
-      config: config as VerificationConfig<unknown, unknown>,
-    }),
-    [state, config]
-  );
+  const value = useMemo(() => ({ state, dispatch, config }), [state, config]);
 
   return (
     <VerificationContext.Provider value={value}>

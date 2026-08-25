@@ -1,94 +1,102 @@
-# Epic 3: Verification Routing & State Management Specification
+# Verification Routing & State
 
-This document defines the coordination rules between the Next.js file-system router and the RTK Query / Zustand state slices for Squad Nova's verification portal.
+How the App Router routes and the verification state machine line up.
 
-## 1. App Router Navigation Mapping
+## 1. Routes
 
-Every path segment is isolated to keep public verification pages separate from internal dashboard logic.
+Each consuming project owns its own URLs and maps the module's navigation
+intents onto them in `config.onNavigate`. Every project uses the same three
+screens under its own base path — `/project-a`, `/project-b`, `/project-c`:
 
-| Route Path          | File Path                                | Active State                                 | Purpose                                                                                         |
-| ------------------- | ---------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `/verify`         | `app/(public)/verify/page.tsx`         | `idle`                                     | Entry point. Prompts the user to scan a QR code or paste a hash token directly.                 |
-| `/verify/scan`    | `app/(public)/verify/scan/page.tsx`    | `scanning`                                 | Activates the device camera stream via`html5-qrcode`.                                         |
-| `/verify/[token]` | `app/(public)/verify/[token]/page.tsx` | `verifying` → `verified` \| `invalid` | Dynamic deep-link handler. Fires the verification query to backend squad`MERN-BE-A` on mount. |
+| Route | File | Screen | Active state |
+| --- | --- | --- | --- |
+| `{base}` | `app/(demo)/{project}/page.tsx` | `TokenEntryView` | `idle` |
+| `{base}/scan` | `app/(demo)/{project}/scan/page.tsx` | `QRScanner` | `idle` |
+| `{base}/[token]` | `app/(demo)/{project}/[token]/page.tsx` | `VerificationView` | `verifying` → `verified` \| `invalid` \| `error` |
 
-## 2. Finite State Machine
+Each project's `layout.tsx` mounts `VerificationProvider`, so state survives
+navigation between its three screens.
 
-The application state is a deterministic state machine to prevent race conditions and inconsistent UI across hooks.
+The module expresses navigation as intent, never as a path:
 
-```
-                ┌────────────┐
-        ┌──────▶│    idle    │◀─────────────────┐
-        │       └────────────┘                   │
-        │              │                          │
-        │              ▼                          │
-        │       ┌────────────┐                    │
-        │       │  scanning  │                    │
-        │       └────────────┘                    │
-        │              │                          │
-        │              ▼                          │
-        │       ┌────────────┐                    │
-        │       │ verifying  │────────────────────┤
-        │       └────────────┘                    │
-        │              │                          │
-        │     ┌────────┼────────┐                 │
-        │     ▼        ▼        ▼                 │
-        │ ┌────────┐┌────────┐┌────────┐          │
-        │ │verified││invalid ││ error  │──────────┘
-        │ └────────┘└────────┘└────────┘   (reset / retry)
-        └──────────────────────────────────────────┘
+```ts
+type VerificationRoute =
+  | { name: "start" }
+  | { name: "scanner" }
+  | { name: "verify"; token: string };
 ```
 
-### State Definitions
+## 2. State machine
 
-| State         | Description                                                                                                                                           |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `idle`      | Uninitialized. Waiting for a scanned token or a direct path redirect.                                                                                 |
-| `scanning`  | Camera stream is active and tracking image frames. If permission is denied, the state drops to`error` and reveals the `ManualTokenFallback` form. |
-| `verifying` | Asynchronous request to the backend is in progress. The UI renders a skeleton loading state.                                                          |
-| `verified`  | The backend returned a valid response. The UI renders the verified asset card.                                                                        |
-| `invalid`   | The API returned a`4xx` response — expired token, tampered hash, or missing credentials.                                                           |
-| `error`     | Environmental failure — no camera permission, network timeout, or server error.                                                                      |
+Five states. There is no `scanning` state — the camera is local UI concern
+inside `QRScanner`, and a scan simply produces a token like any other input.
 
-## 3. RTK Query Integration Pattern
-
-Data actions subscribe to the RTK Query cache rather than maintaining separate local state.
-
-```typescript
-// features/verification/hooks/useVerificationActions.ts
-import { useVerifyAssetQuery } from '@/store/verification/verificationApi';
-import { useVerificationStore } from '@/store/verification/verificationSlice';
-
-export function useVerificationActions(token?: string) {
-  // Subscribe to the RTK Query caching hook
-  const { data, isLoading, isError, error } = useVerifyAssetQuery(token, {
-    skip: !token, // Only run if a token is present
-  });
-
-  // Derive the state-machine status from query state
-  const getDerivedStatus = () => {
-    if (!token) return 'idle';
-    if (isLoading) return 'verifying';
-    if (isError) {
-      return (error as any).status >= 400 && (error as any).status < 500
-        ? 'invalid'
-        : 'error';
-    }
-    if (data) return 'verified';
-    return 'idle';
-  };
-
-  return {
-    status: getDerivedStatus(),
-    assetData: data,
-    errorMessage: error ? (error as any).data?.message : null,
-  };
-}
+```
+              ┌────────┐
+      ┌──────▶│  idle  │◀──────────────┐
+      │       └────────┘               │
+      │            │ tokenReceived     │ reset
+      │            ▼                   │
+      │      ┌───────────┐             │
+      │      │ verifying │◀──── retry ─┤
+      │      └───────────┘             │
+      │            │                   │
+      │   ┌────────┼────────┐          │
+      │   ▼        ▼        ▼          │
+      │ ┌────────┐┌───────┐┌───────┐   │
+      └─│verified││invalid││ error │───┘
+        └────────┘└───────┘└───────┘
 ```
 
-## 4. Error Boundary Defenses
+| State | Meaning | Populated |
+| --- | --- | --- |
+| `idle` | Waiting for input | — |
+| `verifying` | Request in flight | `token` |
+| `verified` | Asset is genuine | `token`, `result` |
+| `invalid` | Backend answered no — expired, revoked, unknown | `token`, `errorMessage`, `errorDetail` |
+| `error` | No answer obtainable — network, timeout, 5xx, bad body | `token`, `errorMessage` |
 
-Every view must treat failure as a first-class state, not an unhandled exception.
+### Invariants
 
-1. **Network dropouts** — RTK Query intercepts connection errors and surfaces a "Try Again" action that invalidates the cache to force a refetch.
-2. **Camera permission denials** — If `navigator.mediaDevices.getUserMedia` throws, the layout sets status to `error`, unmounts the video track, and renders a fallback numeric token entry screen.
+Every transition returns a complete state, so no field outlives the status it
+belongs to:
+
+- A new `tokenReceived` clears any previous error and result.
+- `retry` clears the error before re-entering `verifying`, so no stale message
+  renders under the spinner.
+- `tokenRejected` drops the token, so `retry` cannot silently re-verify a
+  previous one.
+- `retry` with no token is a no-op.
+
+These are covered in `__tests__/unit/verificationMachine.test.ts`.
+
+## 3. State management choice
+
+React Context + `useReducer`, as the brief's default. Redux Toolkit and RTK
+Query were evaluated and dropped: the portal holds one short-lived verification
+at a time, needs no cross-route cache, and the module must not force a store on
+a consuming project. `store/` was removed.
+
+## 4. Error handling
+
+Failure is a state, not an exception.
+
+| Situation | Classified by | Status |
+| --- | --- | --- |
+| Network failure, DNS, abort | `api/errors.ts` | `error` |
+| Timeout (10s), `408`, `504` | `api/errors.ts` | `error` |
+| `5xx` | `api/errors.ts` | `error` |
+| Body is not JSON | `api/verification.ts` | `error` |
+| `4xx` with a body | the project's `parseVerificationResponse` | `invalid` |
+
+`4xx` is delegated because only the consuming project knows what its own `404`
+means. Failed `GET`s retry once; `POST`s never do, so no write is duplicated.
+
+Camera permission denial is handled inside `QRScanner`, which falls back to
+manual entry rather than moving the machine to `error`.
+
+Camera permission is also read *passively* on the entry screen through the
+Permissions API, which shows no prompt. That is what lets the scan button label
+itself correctly — "Begin scan" when access already exists, "Request camera
+permission" when it does not — and open the scanner automatically once access is
+granted.

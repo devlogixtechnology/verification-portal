@@ -1,0 +1,81 @@
+/* features/verification/styles/tokens.css
+   Base token contract for the verification module.
+
+   Every value the module renders comes from one of these. A consuming project
+   restyles the whole flow by redefining them AFTER this file — see the
+   per-project override files for examples.
+
+   Load order:
+     1. features/verification/styles/tokens.css        (this file — defaults)
+     2. features/verification/styles/verification.css  (the components)
+     3. <your-project>/tokens-x.css                    (your overrides)
+*/
+
+:root {
+  /* ---------- Color ---------- */
+  --verification-success: #0acab7;
+  --verification-success-strong: #0c7565;
+  --verification-danger: #bb2525;
+  --verification-warning: var(--verification-danger);
+  --verification-info: var(--verification-success);
+  --verification-neutral: #b1b1b1;
+
+  --verification-surface: #f8f8f8;
+  --verification-surface-muted: #ececec;
+  /* Elevated must read as LIGHTER than the page, not darker: it is what cards,
+     inputs and panels sit on. */
+  --verification-surface-elevated: #ffffff;
+
+  --verification-text-primary: #222222;
+  --verification-text-secondary: #6b6b6b;
+  --verification-text-on-accent: #ffffff;
+
+  --verification-border-subtle: #e6e6e6;
+  --verification-border-strong: var(--verification-neutral);
+  --verification-scrim: rgba(0, 0, 0, 0.55);
+
+  /* Rules and separators. Hairlines disappear on this design's surfaces. */
+  --verification-divider-width: 3px;
+  --verification-rule-width: 2px;
+
+  /* ---------- Typography ---------- */
+  --verification-font-family-heading: system-ui, sans-serif;
+  --verification-font-family-body: system-ui, sans-serif;
+
+  --verification-title-large: 2.1rem;
+  --verification-title-medium: 1.8rem;
+  --verification-title-small: 1.2rem;
+  --verification-heading-size: var(--verification-title-medium);
+  --verification-heading-weight: 800;
+
+  --verification-body-size: 1rem;
+  --verification-body-weight: 400;
+
+  --verification-caption-size: 0.85rem;
+  --verification-weight-bold: 700;
+
+  /* ---------- Layout ---------- */
+  --verification-space-xs: 0.25rem;
+  --verification-space-sm: 0.5rem;
+  --verification-space-md: 1rem;
+  --verification-space-lg: 1.5rem;
+  --verification-space-xl: 2.25rem;
+
+  --verification-radius: 16px;
+  --verification-radius-round: 999px;
+
+  --verification-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+  --verification-shadow-sheet: 0 -4px 21px rgba(0, 0, 0, 0.25);
+
+  /* ---------- Motion ---------- */
+  --verification-duration-fast: 160ms;
+  --verification-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ---------- Optional per-asset accents ----------
+     Default to the primary. A project with multiple asset types redefines
+     these and references them from its own renderVerified. */
+  --verification-accent-a: var(--verification-success);
+  --verification-accent-a-strong: var(--verification-success-strong);
+  --verification-accent-b: var(--verification-success);
+  --verification-accent-b-strong: var(--verification-success-strong);
+}

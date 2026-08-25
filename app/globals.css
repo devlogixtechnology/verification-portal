@@ -1,117 +1,70 @@
 @import "tailwindcss";
 
+/* The verification module owns the design tokens for this app: its contract
+   first, then the components that read it. */
+@import "../features/verification/styles/tokens.css";
+@import "../features/verification/styles/verification.css";
+
+/* ---------------------------------------------------------------------------
+   Legacy palette, kept as aliases only.
+
+   These names predate the token contract and are still referenced by the admin
+   login page and the shared chrome. They resolve to module tokens rather than
+   holding values of their own, so there is exactly one place a colour is
+   decided and a per-project theme retints everything on the page — chrome,
+   module screens and legacy markup alike.
+--------------------------------------------------------------------------- */
 :root {
-  /* Brand Teal Palette */
-  --brand-teal: #0acab7;
-  --brand-teal-hover: #08b6a4;
-  --brand-teal-dark: #009688;
-  --brand-teal-light: #e6fbf8;
-  --brand-teal-border: rgba(10, 202, 183, 0.4);
-  --brand-teal-glow: rgba(10, 202, 183, 0.15);
+  /* Surfaces */
+  --background: var(--verification-surface);
+  --surface-card: var(--verification-surface-elevated);
+  --card: var(--verification-surface-elevated);
+  --surface-muted: var(--verification-surface-muted);
 
-  /* Deep Navy & Slate */
-  --brand-navy: #121826;
-  --brand-navy-hover: #1e293b;
-  --brand-slate: #334155;
-
-  /* Surfaces & Backgrounds */
-  --background: #f8fafc;
-  --surface-card: #ffffff;
-  --surface-muted: #f1f5f9;
-
-  /* Typography */
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  /* Text */
+  --foreground: var(--verification-text-primary);
+  --text-primary: var(--verification-text-primary);
+  --text-secondary: var(--verification-text-secondary);
+  --muted-foreground: var(--verification-text-secondary);
+  --text-muted: var(--verification-neutral);
 
   /* Borders */
-  --border-default: #e2e8f0;
-  --border-subtle: #f1f5f9;
+  --border: var(--verification-border-subtle);
+  --border-default: var(--verification-border-subtle);
+  --border-subtle: var(--verification-border-subtle);
 
-  /* Status Colors */
-  --status-success: #0acab7;
-  --status-danger: #e11d48;
-  --status-danger-bg: #fff1f2;
-  --status-warning: #f59e0b;
-  --status-warning-bg: #fffbeb;
+  /* Brand */
+  --brand-teal: var(--verification-success);
+  --brand-teal-hover: var(--verification-success-strong);
+  --brand-teal-dark: var(--verification-success-strong);
+  --brand-teal-light: var(--verification-surface-muted);
+  --brand-teal-border: var(--verification-success);
+  --brand-teal-glow: var(--verification-surface-muted);
+  --brand-navy: var(--verification-text-primary);
+  --brand-navy-hover: var(--verification-text-primary);
+  --brand-indigo: var(--verification-text-primary);
+  --brand-slate: var(--verification-text-secondary);
 
-  /* Fonts */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Status */
+  --status-success: var(--verification-success);
+  --status-danger: var(--verification-danger);
+  --status-danger-bg: var(--verification-surface-muted);
+  --status-warning: var(--verification-warning);
+  --status-warning-bg: var(--verification-surface-muted);
+
+  /* Type */
+  --font-sans: var(--verification-font-family-body);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 body {
-  background-color: var(--background);
-  color: var(--text-primary);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Ambient Radial Mesh Background */
-.bg-portal-mesh {
-  background-image:
-    radial-gradient(at 50% 0%, rgba(10, 202, 183, 0.12) 0px, transparent 65%),
-    radial-gradient(at 100% 100%, rgba(18, 24, 38, 0.04) 0px, transparent 55%),
-    radial-gradient(at 0% 100%, rgba(10, 202, 183, 0.06) 0px, transparent 55%);
-}
-
-/* 3-Dot Pulse Loading Animations */
-@keyframes centerPing {
-  0% {
-    transform: scale(0.95);
-    opacity: 0.9;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 1;
-    box-shadow: 0 0 20px var(--brand-teal-glow);
-  }
-  100% {
-    transform: scale(0.95);
-    opacity: 0.9;
-  }
-}
-
-.animate-pulse-center {
-  animation: centerPing 1.8s ease-in-out infinite;
-}
-
-/* Laser Scanner Beam */
-@keyframes laserScanAnimation {
-  0% {
-    top: 5%;
-    opacity: 0.8;
-  }
-  50% {
-    top: 90%;
-    opacity: 1;
-  }
-  100% {
-    top: 5%;
-    opacity: 0.8;
-  }
-}
-
-.animate-laser-scan {
-  animation: laserScanAnimation 2.2s ease-in-out infinite;
-}
-
-/* Mockup Specific Metric Card */
-.mockup-metric-card {
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  border-radius: 1.5rem;
-  border: 2px solid var(--brand-teal);
-  background-color: var(--surface-card);
-  padding: 1.25rem;
-  min-height: 112px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-  transition: all 0.2s ease;
-}
-
-.mockup-metric-card:hover {
-  box-shadow: 0 6px 16px var(--brand-teal-glow);
-  transform: translateY(-1px);
+  background: var(--verification-surface);
+  color: var(--verification-text-primary);
+  font-family: var(--verification-font-family-body);
+  font-size: var(--verification-body-size);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

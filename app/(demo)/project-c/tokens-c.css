@@ -1,0 +1,72 @@
+/* Theme override for this project.
+   Loaded AFTER features/verification/styles/tokens.css.
+
+   Note: "surface-elevated" is what cards, inputs and panels sit on, so it must
+   read as LIGHTER than "surface" (the page). The source token file set it equal
+   to "surface-muted", which made every card darker than the page and pushed
+   placeholder text and the QR artwork to near-invisible contrast. */
+
+[data-vf-theme="c"] {
+  /* ---------- Color: base (shared across both asset types) ---------- */
+  --verification-danger: #C4384B;
+  --verification-warning: var(--verification-danger);
+  --verification-neutral: #B8B4AC;
+
+  --verification-surface: #FBFAF7;
+  --verification-surface-muted: #F4F2EC;
+  --verification-surface-elevated: #FFFFFF;
+
+  --verification-text-primary: #24221D;
+  --verification-text-secondary: #65625A;
+
+  --verification-border-subtle: #DFDBD0;
+  --verification-scrim: rgba(20, 18, 12, 0.55);
+
+  /* ---------- Color: dual accent set ---------- */
+  /* Asset type 1 (e.g. Project C's first category) */
+  --verification-accent-a: #1F9E7C;
+  --verification-accent-a-strong: #146B54;
+  /* Asset type 2 (e.g. Project C's second category) */
+  --verification-accent-b: #C7862F;
+  --verification-accent-b-strong: #915F1E;
+
+  /* Defaults — used by the shared chrome (loading/verified generic states)
+     when a specific asset type isn't yet known. renderVerified in this
+     project should reference --verification-accent-a / -b directly per
+     asset type rather than relying on these. */
+  --verification-success: var(--verification-accent-a);
+  --verification-info: var(--verification-accent-a);
+
+  /* ---------- Typography ---------- */
+  --verification-font-family-heading: 'Unbounded', sans-serif;
+  --verification-font-family-body: 'Albert Sans', sans-serif;
+
+  --verification-title-large: 2.1rem;
+  --verification-title-medium: 1.8rem;
+  --verification-title-small: 1.2rem;
+  --verification-heading-size: var(--verification-title-medium);
+  --verification-heading-weight: 800;
+
+  --verification-body-size: 1.1rem;
+  --verification-body-weight: normal;
+
+  --verification-caption-size: 0.9rem;
+  --verification-weight-bold: 700;
+
+  /* ---------- Layout ---------- */
+  --verification-space-xs: 0.25rem;
+  --verification-space-sm: 0.5rem;
+  --verification-space-md: 1rem;
+  --verification-space-lg: 1.5rem;
+  --verification-space-xl: 2.25rem;
+
+  --verification-radius: 16px;
+  --verification-radius-round: 999px;
+
+  --verification-shadow: 0 24px 60px rgba(20, 18, 12, 0.18);
+  --verification-shadow-sheet: 0 -4px 21px rgba(20, 18, 12, 0.25);
+
+  /* ---------- Motion ---------- */
+  --verification-duration-fast: 160ms;
+  --verification-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}

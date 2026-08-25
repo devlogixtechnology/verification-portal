@@ -16,7 +16,7 @@
 ### Confirmed from the technical brief (Squad Nova, Epic 3)
 
 - 4 core tasks: State Management & Routing, QR Scanner, Verification Dashboard UI, API Integration & Error Handling
-- 2 public verification endpoints: `POST /api/verify/qr-code`, `POST /api/verify/reference`
+- 2 public verification endpoints per the brief: `POST /api/verify/qr-code`, `POST /api/verify/reference` — **the mock backends currently expose `GET /verify/:token` instead; swapping to the real shape is a one-line change to `buildVerificationRequest`**
 - 4 admin document CRUD endpoints: `POST/GET/PUT /api/documents`, `GET /api/documents/:id`
 - Auth endpoints (from `TECHNICAL_SPECIFICATION.pdf` §4.3): `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh` — all JWT-based, no auth required to hit register/login themselves
 
@@ -53,27 +53,27 @@ Tasks 2 and 3 can run in parallel once Task 1 lands. Task 4 (login/signup) has n
 
 ### Phase 1 — State Management & Routing (foundation)
 
-- [X] Map every route explicitly: `/verify`, `/verify/scan`, `/verify/[token]`, `/verify/[token]/result`
-- [ ] Define state machine: `idle → scanning → verifying → verified | invalid | error`
-- [ ] Decide state tool: React Context + useReducer (brief's default) — **note:** your memory says the team is standardizing on RTK Query for async state, so confirm this doesn't conflict; RTK Query handles the *server* state (API calls/cache), Context/useReducer would only handle *local UI* state like which screen is active
-- [ ] Document routing + state plan as a short reference doc before other tasks build on it
+- [X] Map every route explicitly: `/verify`, `/verify/scan`, `/verify/[token]` (no `/result` route — the token page renders the outcome directly)
+- [X] Define state machine: `idle → verifying → verified | invalid | error` (no `scanning` state — the camera is local UI inside `QRScanner`, and a scan just produces a token)
+- [X] Decide state tool: **React Context + useReducer**. RTK Query was dropped — the portal holds one short-lived verification at a time, needs no cross-route cache, and the module must not force a store on a consuming project. `store/` was removed.
+- [X] Document routing + state plan as a short reference doc — `docs/ARCHITECTURE_STATE.md`
 - [ ] Review with squad before Tasks 2–4 begin
 
 ### Phase 2 — QR Scanner (parallel with Phase 3)
 
-- [ ] Integrate `html5-qrcode` (already added per merged PR)
-- [ ] Camera permission request + denial fallback (manual token entry)
-- [ ] Validate decoded payload format before sending to backend
-- [ ] Stop camera stream on capture/navigation away
-- [ ] Ship as self-contained reusable component (no props in, callback out)
+- [X] Integrate `html5-qrcode`
+- [X] Camera permission request + denial fallback — `useCameraPermission` + `ManualTokenFallback`
+- [X] Validate decoded payload format before sending to backend — via `config.parseToken` / `isValidTokenFormat`
+- [X] Stop camera stream on capture/navigation away — `useQrScanner` teardown
+- [X] Ship as self-contained reusable component — `QRScanner`, split into permission/lifecycle/viewfinder/fallback parts
 
 ### Phase 3 — Verification Dashboard UI (parallel with Phase 2)
 
-- [ ] Reference `verify.devlogix.online` for layout/hierarchy (not pixel-copy)
-- [ ] Render only backend-returned fields, no hardcoded/assumed fields
-- [ ] Build as composable pieces: status banner, metadata card, timestamp/issuer block
-- [ ] Distinct "verified" badge/indicator
-- [ ] Graceful handling of partial/empty metadata
+- [X] Reference `verify.devlogix.online` for layout/hierarchy
+- [X] Render only backend-returned fields — the result screen is supplied by the project as `config.renderVerified`
+- [X] Build as composable pieces — `vf-metric-card`, `vf-detail-row` and friends in `styles/verification.css`
+- [X] Distinct "verified" badge/indicator
+- [X] Graceful handling of partial/empty metadata
 
 ### Phase 4 — Admin Login / Signup **[your addition — confirm scope first]**
 
@@ -86,19 +86,19 @@ Tasks 2 and 3 can run in parallel once Task 1 lands. Task 4 (login/signup) has n
 
 ### Phase 5 — API Integration & Error Handling (final wiring)
 
-- [ ] Centralize all calls in `lib/api/verification.ts` (or your RTK Query `injectEndpoints` equivalent)
-- [ ] Attach JWT via `Authorization: Bearer <token>` for authenticated calls (admin CRUD)
-- [ ] Distinguish error types: network/timeout, 4xx (expected, user-facing), 5xx (generic fallback)
-- [ ] Bounded retry: 1 automatic retry on network failure, then manual "Try again"
-- [ ] Route loading/error state through the Phase 1 state machine, not per-screen flags
+- [X] Centralize all calls — `features/verification/api/`; no component calls `fetch`
+- [ ] Attach JWT via `Authorization: Bearer <token>` for authenticated calls (admin CRUD) — not needed for public verification; `buildVerificationRequest` already accepts headers
+- [X] Distinguish error types: network/timeout → `error`, 4xx → the project's parser → `invalid`, 5xx → `error`
+- [X] Bounded retry: one automatic retry on `GET` (never on `POST`), then a manual Retry action
+- [X] Route loading/error state through the state machine, not per-screen flags
 
 ### Phase 6 — Submission Checklist (from brief §6)
 
-- [ ] TypeScript types defined for all API request/response shapes
-- [ ] Loading, success, error states visually distinct on every screen
-- [ ] No hardcoded secrets/tokens/internal URLs in client code
+- [X] TypeScript types defined for all API request/response shapes
+- [X] Loading, success, error states visually distinct on every screen
+- [X] No hardcoded secrets/tokens/internal URLs in client code
 - [ ] Shared components documented in Storybook
-- [ ] Camera denial + malformed QR both have working fallback
+- [X] Camera denial + malformed QR both have working fallback
 - [ ] Routing/state plan was reviewed by squad before implementation
 
 ---

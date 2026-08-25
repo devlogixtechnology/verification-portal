@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Compiled test output.
+    ".test-build/**",
+    // Plain CommonJS Node services, linted by their own runtime rules.
+    "mock-backend/**",
+    // Scratch area for specs and source material, not part of the build.
+    "EXTRA/**",
   ]),
 ]);
 

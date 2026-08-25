@@ -1,21 +1,33 @@
-import type { ParsedVerificationResult } from "../types/verification.types";
+import type {
+  ParsedVerificationResult,
+  VerificationMessages,
+} from "../types/verification.types";
 
 /** A failure the module can describe without help from the consuming project. */
-type ClassifiedError = Extract<
-  ParsedVerificationResult<never, never>,
+export type ClassifiedError = Extract<
+  ParsedVerificationResult,
   { outcome: "failed" }
 >;
 
-/** Default copy shown when a request could not be completed. */
-const FAILURE_MESSAGES = {
+/** Copy used when the project supplies no override. */
+export const DEFAULT_MESSAGES: VerificationMessages = {
+  invalidTokenFormat:
+    "That doesn't look like a valid code. Please check it and try again.",
   timeout: "The request timed out. Please try again.",
-  server: "Something went wrong on our end. Please try again.",
-  network: "Network error. Please check your connection and try again.",
-  unreadable: "Something went wrong. Please try again.",
-} as const;
+  serverError: "Something went wrong on our end. Please try again.",
+  networkError: "Network error. Please check your connection and try again.",
+  unreadableResponse: "Something went wrong. Please try again.",
+};
+
+/** Fills any gaps in a project's message overrides with the defaults. */
+export function resolveMessages(
+  overrides?: Partial<VerificationMessages>
+): VerificationMessages {
+  return overrides ? { ...DEFAULT_MESSAGES, ...overrides } : DEFAULT_MESSAGES;
+}
 
 /** Builds a `failed` outcome. */
-function failure(message: string): ClassifiedError {
+export function failure(message: string): ClassifiedError {
   return { outcome: "failed", message };
 }
 
@@ -25,29 +37,29 @@ function failure(message: string): ClassifiedError {
  * Returns a failure for timeouts and server faults. Returns `null` for healthy
  * responses and for 4xx, which are passed to `parseVerificationResponse`
  * instead: only the consuming project knows whether a 404 means "expired",
- * "tampered", or something else.
+ * "revoked", or something else.
  */
-function classifyResponse(
+export function classifyResponse(
   response: Response,
-  isHealthyResponse: (response: Response) => boolean
+  isHealthyResponse: (response: Response) => boolean,
+  messages: VerificationMessages = DEFAULT_MESSAGES
 ): ClassifiedError | null {
   if (isHealthyResponse(response)) return null;
 
   if (response.status === 408 || response.status === 504) {
-    return failure(FAILURE_MESSAGES.timeout);
+    return failure(messages.timeout);
   }
   if (response.status >= 500) {
-    return failure(FAILURE_MESSAGES.server);
+    return failure(messages.serverError);
   }
   return null;
 }
 
 /** Classifies a thrown request error, separating an aborted timeout from a lost connection. */
-function classifyNetworkError(error: unknown): ClassifiedError {
-  const isAbort =
-    error instanceof Error && error.name === "AbortError";
-  return failure(isAbort ? FAILURE_MESSAGES.timeout : FAILURE_MESSAGES.network);
+export function classifyNetworkError(
+  error: unknown,
+  messages: VerificationMessages = DEFAULT_MESSAGES
+): ClassifiedError {
+  const isAbort = error instanceof Error && error.name === "AbortError";
+  return failure(isAbort ? messages.timeout : messages.networkError);
 }
-
-export { classifyResponse, classifyNetworkError, failure, FAILURE_MESSAGES };
-export type { ClassifiedError };

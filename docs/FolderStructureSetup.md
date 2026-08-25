@@ -1,115 +1,99 @@
+# Folder Structure
 
-# Verification Portal — Reorganization & Main Pages Walkthrough
+The organising rule: **anything that knows about a specific backend, brand, or
+URL lives outside `features/verification/`.** The module stays generic; the app
+supplies the specifics through one config object.
 
-## Summary of Accomplishments
+## The module
 
-We reorganized and rebuilt the verification portal from the ground up to **senior-developer standards**. The codebase now features a clean architecture with a pure finite state machine, reusable atomic design system primitives, and full Next.js App Router pages for manual and QR verification.
+```
+features/verification/
+├── index.ts                        public API — import from here, not deep paths
+├── README.md                       the contract for a consuming project
+├── types/verification.types.ts     config contract, state, outcomes, routes
+├── state/
+│   ├── verificationMachine.ts      pure reducer + actions
+│   ├── VerificationProvider.tsx    context, config required
+│   └── useVerification.ts          reads { state, dispatch, config }
+├── api/
+│   ├── client.ts                   fetch, 10s timeout, GET-only retry
+│   ├── errors.ts                   status/network classification + copy
+│   └── verification.ts             verifyToken pipeline
+├── hooks/useSubmitToken.ts         parse → validate → request → dispatch
+├── components/
+│   ├── VerificationView.tsx        the seam: status → config.render*
+│   ├── TokenEntryView.tsx          entry screen
+│   ├── LoadingPulse.tsx            in-flight screen
+│   ├── NetworkErrorView.tsx        error screen
+│   └── InvalidResultView.tsx       default rejection screen
+├── scanner/
+│   ├── QRScanner.tsx               orchestrator
+│   ├── useCameraPermission.ts      permission probe
+│   ├── useQrScanner.ts             html5-qrcode lifecycle
+│   ├── ScannerViewfinder.tsx       live camera frame
+│   ├── ManualTokenFallback.tsx     keyboard entry when denied
+│   └── ScannerPresets.tsx          project-supplied shortcuts
+└── styles/
+    ├── tokens.css                  the token contract
+    └── verification.css            every class the module renders
+```
 
----
+No file here imports from `app/`, `lib/`, `components/`, or `types/`.
 
-## 1. Professional Architecture & Directory Structure
+## The app
 
 ```
 app/
-├── (public)/
-│   └── verify/
-│       ├── layout.tsx                # Mounts VerificationProvider with default configuration
-│       ├── page.tsx                  # Verification Portal Home (Manual Code Lookup & Scanner CTA)
-│       ├── loading.tsx               # Route loading UI with spinner
-│       ├── error.tsx                 # Route error boundary with retry action
-│       ├── scan/
-│       │   ├── page.tsx              # Live Camera QR Scanner View
-│       │   └── loading.tsx           # Scanner initializing UI
-│       └── [token]/
-│           └── page.tsx              # Dynamic Token Verification & Presentation Dashboard
-├── api/
-│   └── verify/[token]/
-│       └── route.ts                  # Next.js Route Handler for Verification Endpoint
-├── layout.tsx                        # Root layout with fonts & metadata
-├── page.tsx                          # Portal Landing Page
-└── globals.css                       # Design tokens & base styles
+├── page.tsx                        demo index (delete for a real deployment)
+├── layout.tsx                      root layout, fonts, globals.css
+├── login/page.tsx                  admin login scaffold
+└── (demo)/project-{a,b,c}/         the three consumers
+    ├── config.tsx                  backend, parser, navigation, renderVerified
+    ├── tokens-{a,b,c}.css          theme, scoped by [data-vf-theme]
+    ├── layout.tsx                  mounts the provider
+    ├── page.tsx, scan/, [token]/   the same three screens
 
-components/
-└── ui/                               # Reusable Atomic UI Primitives
-    ├── Button.tsx                    # Accessible button with variants & loading state
-    ├── Card.tsx                      # Composable Card, CardHeader, CardTitle, CardContent, CardFooter
-    ├── Badge.tsx                     # Semantic status badges (success, danger, warning, neutral)
-    ├── Input.tsx                     # Accessible text input with label, icons & error text
-    └── Spinner.tsx                   # WCAG-compliant loading indicator
+lib/
+├── api/verificationEnvelope.ts     the mock backends' envelope + RejectionDetail
+└── config/tokenUtils.ts            token parsing and format rules
 
-features/verification/
-├── api/                              # Transport & Error Classification
-│   ├── client.ts                     # Fetch wrapper with AbortController timeout & retry
-│   ├── errors.ts                     # HTTP / network error classifier
-│   └── verification.ts               # Core verifyToken pipeline
-├── config/
-│   └── verification.config.ts        # Default portal configuration & mock demo dataset
-├── components/                       # Feature-Specific UI
-│   └── TokenInputForm.tsx            # Manual code input form with validation & deep-link dispatch
-├── dashboard/                        # Presentation Components
-│   ├── AssetDetails.tsx              # Verified document metadata & blockchain hash card
-│   ├── IssuerDetails.tsx             # Organization/Authority issuer info & verified badge
-│   ├── RecipientDetails.tsx          # Subject/Holder identity card
-│   ├── VerificationStatus.tsx        # Dynamic status banner (Verified / Invalid / Error)
-│   ├── VerificationTimestamp.tsx     # Formatted timestamp with <time> tag
-│   ├── VerificationHeader.tsx        # Portal brand header
-│   ├── VerificationFooter.tsx        # Security & legal footer
-│   └── VerificationDashboard.tsx     # Composed presentation screen with Print action
-├── scanner/
-│   └── QRScanner.tsx                 # html5-qrcode camera stream, camera switcher & fallback form
-├── state/                            # Pure Reducer & State Management Layer
-│   ├── index.ts                      # Clean barrel exports
-│   ├── verificationMachine.ts        # Pure state machine reducer & transition types
-│   ├── VerificationProvider.tsx      # React Context Provider
-│   └── useVerification.ts            # State machine consumer hook
-└── types/
-    └── verification.types.ts         # Strict TypeScript domain & state types
+components/ui/, components/shared/  generic primitives
+mock-backend/                       three fake backends, one per port
+__tests__/{unit,integration}/       mirror the source paths
 ```
 
----
+## One design system
 
-## 2. Reorganized State & Reducer Module
+`features/verification/styles/tokens.css` is the only place a colour, size or
+rule thickness is decided. Everything else reads from it:
 
-The state machine is cleanly isolated in `features/verification/state/`:
+- `app/globals.css` imports the contract, then aliases the older
+  `--brand-*` / `--surface-*` names onto it. Those names hold no values of
+  their own, so nothing can drift out of step.
+- `components/shared/Header` and `Footer` are built from `vf-*` classes.
+- Each project's `tokens-{a,b,c}.css` overrides the contract under
+  `[data-vf-theme="..."]`, which `ThemeScope` puts on `<html>` — so the app
+  bar, footer, page background and module screens all retint together.
 
-- [`verificationMachine.ts`](file:///mnt/a0d79cc5-6dd9-440b-b6fc-23c61c69d7e8/professioal-projects/verification-portal/features/verification/state/verificationMachine.ts):
-  - Pure reducer handling `tokenReceived`, `verificationSucceeded`, `verificationRejected`, `verificationFailed`, `retry`, and `reset`.
-  - Immutable transitions ensuring zero stale UI flashes across retry/reset cycles.
-- [`VerificationProvider.tsx`](file:///mnt/a0d79cc5-6dd9-440b-b6fc-23c61c69d7e8/professioal-projects/verification-portal/features/verification/state/VerificationProvider.tsx):
-  - Wraps the verification route subtree (`/verify/*`), eliminating prop drilling.
-- [`useVerification.ts`](file:///mnt/a0d79cc5-6dd9-440b-b6fc-23c61c69d7e8/professioal-projects/verification-portal/features/verification/state/useVerification.ts) & [`useSubmitToken.ts`](file:///mnt/a0d79cc5-6dd9-440b-b6fc-23c61c69d7e8/professioal-projects/verification-portal/features/verification/hooks/useSubmitToken.ts):
-  - Orchestrates asynchronous verification with stale response protection.
+Surface roles, in order from back to front: `--verification-surface` is the
+page, `--verification-surface-muted` is recessed, and
+`--verification-surface-elevated` is what cards and inputs sit on. Elevated
+must be lighter than the page, or every card reads as a hole in it.
 
----
+## Where new files go
 
-## 3. Main Pages Implemented
+| Creating | Put it in |
+| --- | --- |
+| A route | `app/(demo)/...`, or your own route group |
+| Something the module needs and no project can customise | `features/verification/` |
+| A backend response shape | `lib/api/` |
+| A project's config | that project's folder |
+| A project's asset schema | that project's `config.tsx` |
+| A project's result screen | that project's folder |
+| A generic button, card, badge | `components/ui/` |
+| A test | mirror the source path under `__tests__/` |
 
-1. **Portal Landing Page ([`app/page.tsx`](file:///mnt/a0d79cc5-6dd9-440b-b6fc-23c61c69d7e8/professioal-projects/verification-portal/app/page.tsx))**:
-   - Header with brand navigation and quick links.
-   - Hero section with embedded quick verification lookup.
-   - Feature highlights: QR camera scanning, cryptographic signatures, and real-time revocation checks.
-2. **Verification Entry Page ([`app/(public)/verify/page.tsx`](file:///mnt/a0d79cc5-6dd9-440b-b6fc-23c61c69d7e8/professioal-projects/verification-portal/app/%28public%29/verify/page.tsx))**:
-   - Primary manual token lookup form with validation.
-   - Dedicated QR scanner CTA card.
-   - Trust and security assurance badges.
-3. **Live QR Camera Scanner ([`app/(public)/verify/scan/page.tsx`](file:///mnt/a0d79cc5-6dd9-440b-b6fc-23c61c69d7e8/professioal-projects/verification-portal/app/%28public%29/verify/scan/page.tsx))**:
-   - Live camera viewfinder powered by `html5-qrcode` with target overlay.
-   - Camera switching support for multi-camera mobile/tablet devices.
-   - Graceful fallback to manual code entry when camera access is denied.
-   - Instant redirect to `/verify/[token]` on successful decode.
-4. **Dynamic Verification & Result Dashboard ([`app/(public)/verify/[token]/page.tsx`](file:///mnt/a0d79cc5-6dd9-440b-b6fc-23c61c69d7e8/professioal-projects/verification-portal/app/%28public%29/verify/%5Btoken%5D/page.tsx))**:
-   - Automatically executes verification on mount.
-   - Accessible loading state with spinner and token indicator.
-   - Full [`VerificationDashboard`](file:///mnt/a0d79cc5-6dd9-440b-b6fc-23c61c69d7e8/professioal-projects/verification-portal/features/verification/dashboard/VerificationDashboard.tsx) displaying status banner, document attributes, issuer credentials, recipient info, blockchain proof, print certificate action, and retry/reset flows.
-5. **Backend Verification Route Handler ([`app/api/verify/[token]/route.ts`](file:///mnt/a0d79cc5-6dd9-440b-b6fc-23c61c69d7e8/professioal-projects/verification-portal/app/api/verify/%5Btoken%5D/route.ts))**:
-   - Supports verified, expired (`410`), revoked (`403`), and not found (`404`) responses.
+## Naming
 
----
-
-## 4. Quality & Build Verification
-
-| Check                             | Command        | Status                                                                                                |
-| --------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------- |
-| **TypeScript Compilation**  | `next build` | **PASSED** (0 errors)                                                                           |
-| **ESLint Static Analysis**  | `eslint`     | **PASSED** (0 errors, 0 warnings)                                                               |
-| **Static Route Generation** | `next build` | **PASSED** (`/`, `/verify`, `/verify/scan`, `/verify/[token]`, `/api/verify/[token]`) |
+Components `PascalCase.tsx`, hooks `useCamelCase.ts`, logic `camelCase.ts`,
+types `camelCase.types.ts`, route folders lowercase matching the URL segment.

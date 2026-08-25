@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test scripts/run-tests.mjs"
+    "test": "node scripts/run-tests.mjs"
   },
   "dependencies": {
     "html5-qrcode": "^2.3.8",
